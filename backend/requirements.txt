@@ -1,0 +1,37 @@
+# --- Web framework ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+
+# --- Database ---
+SQLAlchemy>=2.0.36,<2.1
+psycopg2-binary==2.9.10
+alembic==1.14.0
+
+# --- Validation & settings ---
+pydantic[email]>=2.10.4,<3
+pydantic-settings>=2.7.0
+python-dotenv==1.0.1
+
+# --- Auth ---
+PyJWT==2.10.1
+bcrypt==4.2.1
+
+# --- File processing / bulk import ---
+pandas>=2.2.3
+openpyxl==3.1.5
+
+# --- OCR / PDF ---
+pymupdf==1.24.14
+pytesseract==0.3.13
+Pillow==11.1.0
+
+# --- AI / HTTP ---
+httpx==0.28.1
+
+# --- Caching / background ---
+redis==5.2.1
+
+# --- Testing ---
+pytest==8.3.4
+pytest-asyncio==0.25.2
