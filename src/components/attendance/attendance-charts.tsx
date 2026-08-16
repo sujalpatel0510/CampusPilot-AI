@@ -2,11 +2,10 @@
 
 import { Bar, BarChart, CartesianGrid, Cell, Legend, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis, AreaChart, Area } from "recharts";
 import type { AttendanceOverview } from "@/types";
-import { SUBJECTS } from "@/data/mock-data";
 
 export function AttendanceBarChart({ data }: { data: AttendanceOverview }) {
   const chartData = data.subjects.map((subject) => ({
-    name: SUBJECTS.find((s) => s.id === subject.subjectId)?.name.split(" ")[0] ?? subject.subjectId,
+    name: subject.subjectName?.split(" ")[0] ?? subject.subjectCode ?? subject.subjectId,
     percentage: subject.percentage,
     below: subject.percentage < 75,
   }));

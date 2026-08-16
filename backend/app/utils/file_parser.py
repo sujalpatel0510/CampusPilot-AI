@@ -3,8 +3,6 @@
 from io import BytesIO
 from typing import Any, Dict, List
 
-import pandas as pd
-
 from app.core.exceptions import ValidationFailedError
 
 
@@ -13,6 +11,8 @@ def read_table(file_bytes: bytes, filename: str) -> List[Dict[str, Any]]:
 
     Column names are normalised: stripped and lowercased.
     """
+    import pandas as pd
+
     name = filename.lower()
     try:
         if name.endswith(".csv"):

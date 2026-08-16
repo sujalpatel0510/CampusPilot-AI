@@ -24,5 +24,13 @@ class Exam(Base):
 
     subject: Mapped["Subject"] = relationship(back_populates="exams")
 
+    @property
+    def subject_code(self) -> str:
+        return self.subject.code if self.subject else ""
+
+    @property
+    def subject_name(self) -> str:
+        return self.subject.name if self.subject else ""
+
     def __repr__(self) -> str:  # pragma: no cover
         return f"<Exam {self.exam_type} {self.exam_date}>"

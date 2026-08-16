@@ -1,4 +1,4 @@
-"""Exam endpoints (read: any authenticated user, write: admin)."""
+"""Exam endpoints (read: any authenticated user, write: admin/faculty)."""
 
 from datetime import date
 from typing import Optional
@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import pagination
 from app.core.database import get_db
 from app.core.exceptions import NotFoundError
-from app.core.security import get_current_user, require_admin
+from app.core.security import get_current_user, require_faculty_or_admin
 from app.models.exam import Exam
 from app.models.user import User
 from app.schemas.common import MessageResponse, Paginated
@@ -69,10 +69,10 @@ def get_exam(
     return exam
 
 
-@router.post("", response_model=ExamOut, summary="Create an exam (admin)")
+@router.post("", response_model=ExamOut, summary="Create an exam (admin/faculty)")
 def create_exam(
     payload: ExamCreate,
-    _: User = Depends(require_admin),
+    _: User = Depends(require_faculty_or_admin),
     db: Session = Depends(get_db),
 ):
     exam = Exam(**payload.model_dump())
@@ -83,11 +83,11 @@ def create_exam(
     return exam
 
 
-@router.put("/{exam_id}", response_model=ExamOut, summary="Update an exam (admin)")
+@router.put("/{exam_id}", response_model=ExamOut, summary="Update an exam (admin/faculty)")
 def update_exam(
     exam_id: int,
     payload: ExamUpdate,
-    _: User = Depends(require_admin),
+    _: User = Depends(require_faculty_or_admin),
     db: Session = Depends(get_db),
 ):
     exam = db.get(Exam, exam_id)
@@ -100,10 +100,10 @@ def update_exam(
     return exam
 
 
-@router.delete("/{exam_id}", response_model=MessageResponse, summary="Delete an exam (admin)")
+@router.delete("/{exam_id}", response_model=MessageResponse, summary="Delete an exam (admin/faculty)")
 def delete_exam(
     exam_id: int,
-    _: User = Depends(require_admin),
+    _: User = Depends(require_faculty_or_admin),
     db: Session = Depends(get_db),
 ):
     exam = db.get(Exam, exam_id)

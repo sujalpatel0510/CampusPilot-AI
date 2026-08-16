@@ -17,7 +17,7 @@ from app.core.exceptions import NotFoundError, ValidationFailedError
 from app.models.study_plan import StudyPlan
 from app.models.subject import Subject
 
-WEEK_DAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
+WEEK_DAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 
 PREFERRED_START = {
     "morning": (8, 0),
@@ -45,7 +45,8 @@ def generate_plan_slots(
         )
 
     first_exam = min(exams.values())
-    end_date = max(today, first_exam - timedelta(days=1))
+    last_exam = max(exams.values())
+    end_date = max(today, last_exam)
     if end_date == today:
         end_date = today
 

@@ -24,7 +24,8 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { SUBJECTS } from "@/data/mock-data";
+import { useApi } from "@/hooks/use-api";
+import { api } from "@/lib/api";
 
 const NOTIFICATION_PREFS = [
   { key: "assignments", label: "Assignment deadlines", description: "Reminders 48 hours before a deadline" },
@@ -42,7 +43,9 @@ const AI_PREFS = [
 export default function SettingsPage() {
   const { user, logout, updateProfile } = useAuth();
   const { theme, setTheme } = useTheme();
-  const [name, setName] = useState(user?.name ?? "");
+  const isStudent = user?.role === "student";
+  const subjects = useApi(() => (isStudent ? api.getSubjects() : Promise.resolve([])), [isStudent], { key: "subjects" });
+  const [name, setName] = useState(user?.full_name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [course, setCourse] = useState(user?.course ?? "B.Tech CSE");
   const [semester, setSemester] = useState<string>(user?.semester ? `Semester ${user.semester}` : "Semester 4");
@@ -68,7 +71,7 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       await updateProfile({
-        name: name.trim(),
+        full_name: name.trim(),
         course,
         semester: Number(semester.match(/\d+/)?.[0] ?? user?.semester),
       });
@@ -127,36 +130,46 @@ export default function SettingsPage() {
               <p className="text-[11px] text-muted-foreground">Email is tied to your college account and cannot be changed.</p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="set-course">Course</Label>
-                <Select value={course} onValueChange={setCourse}>
-                  <SelectTrigger id="set-course">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {["B.Tech CSE", "B.Tech ECE", "B.Tech ME", "B.Tech Civil", "M.Tech", "MCA", "MBA"].map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="set-sem">Semester</Label>
-                <Select value={semester} onValueChange={setSemester}>
-                  <SelectTrigger id="set-sem">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {["Semester 1", "Semester 2", "Semester 3", "Semester 4", "Semester 5", "Semester 6", "Semester 7", "Semester 8"].map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {isStudent ? (
+                <>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="set-course">Course</Label>
+                    <Select value={course} onValueChange={setCourse}>
+                      <SelectTrigger id="set-course">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {["B.Tech CSE", "B.Tech ECE", "B.Tech ME", "B.Tech Civil", "M.Tech", "MCA", "MBA"].map((c) => (
+                          <SelectItem key={c} value={c}>
+                            {c}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="set-sem">Semester</Label>
+                    <Select value={semester} onValueChange={setSemester}>
+                      <SelectTrigger id="set-sem">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {["Semester 1", "Semester 2", "Semester 3", "Semester 4", "Semester 5", "Semester 6", "Semester 7", "Semester 8"].map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {s}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor="set-department">Department</Label>
+                  <Input id="set-department" value={user?.department ?? ""} disabled />
+                  <p className="text-[11px] text-muted-foreground">Department is set by the institute.</p>
+                </div>
+              )}
             </div>
             <Button onClick={saveProfile} disabled={saving}>
               {saving ? "Saving…" : "Save changes"}
@@ -203,25 +216,27 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Bell className="h-4 w-4 text-primary" />
-              Notifications
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1">
-            {NOTIFICATION_PREFS.map((pref) => (
-              <div key={pref.key} className="flex items-center justify-between gap-4 py-2.5">
-                <div>
-                  <p className="text-sm font-medium">{pref.label}</p>
-                  <p className="text-xs text-muted-foreground">{pref.description}</p>
+        {isStudent ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Bell className="h-4 w-4 text-primary" />
+                Notifications
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1">
+              {NOTIFICATION_PREFS.map((pref) => (
+                <div key={pref.key} className="flex items-center justify-between gap-4 py-2.5">
+                  <div>
+                    <p className="text-sm font-medium">{pref.label}</p>
+                    <p className="text-xs text-muted-foreground">{pref.description}</p>
+                  </div>
+                  <Switch checked={prefs[pref.key]} onCheckedChange={() => togglePref(pref.key)} aria-label={pref.label} />
                 </div>
-                <Switch checked={prefs[pref.key]} onCheckedChange={() => togglePref(pref.key)} aria-label={pref.label} />
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+              ))}
+            </CardContent>
+          </Card>
+        ) : null}
 
         <Card>
           <CardHeader>
@@ -283,21 +298,23 @@ export default function SettingsPage() {
                 </button>
               ))}
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="set-default-course">Default course view</Label>
-              <Select defaultValue={SUBJECTS[0]?.id}>
-                <SelectTrigger id="set-default-course">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SUBJECTS.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {isStudent ? (
+              <div className="space-y-1.5">
+                <Label htmlFor="set-default-course">Default course view</Label>
+                <Select defaultValue={subjects.data?.[0]?.id}>
+                  <SelectTrigger id="set-default-course">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(subjects.data ?? []).map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
 

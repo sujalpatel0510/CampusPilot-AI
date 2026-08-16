@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
 
     # Database
-    DATABASE_URL: str = "postgresql+psycopg2://campuspilot:campuspilot@localhost:5432/campuspilot"
+    DATABASE_URL: str = "postgresql+psycopg2://postgres:8511@localhost:5432/campuspilot"
 
     # Security
     SECRET_KEY: str = "change-me-to-a-long-random-string"

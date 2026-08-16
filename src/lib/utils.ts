@@ -79,3 +79,29 @@ export function isSameDate(a: Date, b: Date): boolean {
 export function uid(prefix = "id"): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
+
+const SUBJECT_PALETTE = [
+  "#6366f1",
+  "#8b5cf6",
+  "#ec4899",
+  "#f59e0b",
+  "#10b981",
+  "#06b6d4",
+  "#f43f5e",
+  "#84cc16",
+];
+
+export function subjectColor(code: string): string {
+  let hash = 0;
+  for (let i = 0; i < code.length; i++) {
+    hash = (hash * 31 + code.charCodeAt(i)) >>> 0;
+  }
+  return SUBJECT_PALETTE[hash % SUBJECT_PALETTE.length];
+}
+
+export const WEEK_DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+export function weekdayToIndex(day: string): number {
+  const index = WEEK_DAY_NAMES.indexOf(day);
+  return index === -1 ? 0 : index;
+}

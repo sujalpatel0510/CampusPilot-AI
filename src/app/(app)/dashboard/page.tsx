@@ -23,7 +23,7 @@ function greeting(): string {
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const { data, loading, error, refetch } = useApi(() => api.getDashboardData());
+  const { data, loading, error, refetch } = useApi(() => api.getDashboardData(), [], { key: "dashboard" });
 
   const today = new Date().toLocaleDateString("en-IN", {
     weekday: "long",
@@ -36,7 +36,7 @@ export default function DashboardPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{greeting()}, {user?.name?.split(" ")[0] ?? "Student"}</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{greeting()}, {user?.full_name?.split(" ")[0] ?? "Student"}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{today}</p>
         </div>
         <ErrorState message={error} onRetry={refetch} />
@@ -47,7 +47,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">{greeting()}, {user?.name?.split(" ")[0] ?? "Student"}</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{greeting()}, {user?.full_name?.split(" ")[0] ?? "Student"}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{today}</p>
       </div>
 

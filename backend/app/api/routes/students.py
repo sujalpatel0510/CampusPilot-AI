@@ -37,7 +37,7 @@ logger = get_logger("students")
 
 router = APIRouter(prefix="/students", tags=["Students"])
 
-WEEK_DAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
+WEEK_DAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 
 
 # --- helpers -----------------------------------------------------------------

@@ -2,8 +2,11 @@
 
 import { Bot } from "lucide-react";
 import Link from "next/link";
+import { useAuth } from "@/lib/auth";
 
 export function FloatingAssistant() {
+  const { user } = useAuth();
+  if (user && user.role !== "student") return null;
   return (
     <Link
       href="/assistant"

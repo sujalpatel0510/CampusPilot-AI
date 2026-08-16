@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { DAY_LABELS } from "@/lib/utils";
 
 export default function TimetablePage() {
-  const { data, loading, error, refetch } = useApi(() => api.getTimetable());
+  const { data, loading, error, refetch } = useApi(() => api.getTimetable(), [], { key: "timetable" });
   const [view, setView] = useState<"week" | "today">("week");
 
   if (error) {

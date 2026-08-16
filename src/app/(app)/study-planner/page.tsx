@@ -15,7 +15,8 @@ import type { StudyPlan, StudyPlanForm } from "@/types";
 import { toast } from "sonner";
 
 export default function StudyPlannerPage() {
-  const { data, loading, error, refetch } = useApi(() => api.getStudyPlan());
+  const { data, loading, error, refetch } = useApi(() => api.getStudyPlan(), [], { key: "study-plan" });
+  const subjects = useApi(() => api.getSubjects(), [], { key: "subjects" });
   const [generating, setGenerating] = useState(false);
 
   async function handleGenerate(form: StudyPlanForm) {
@@ -30,6 +31,13 @@ export default function StudyPlannerPage() {
       setGenerating(false);
     }
   }
+
+  const defaultForm: StudyPlanForm = {
+    examDates: {},
+    availableHours: 3,
+    weakSubjects: [],
+    preferredTime: "evening",
+  };
 
   if (error) {
     return (
@@ -53,13 +61,14 @@ export default function StudyPlannerPage() {
         <div className="lg:col-span-2">
           {loading ? (
             <Skeleton className="h-[560px]" />
-          ) : data ? (
+          ) : (
             <PlanForm
-              initial={data.form}
+              initial={data ? data.form : defaultForm}
               onGenerate={handleGenerate}
               generating={generating}
+              subjects={subjects.data ?? []}
             />
-          ) : null}
+          )}
         </div>
 
         <div className="space-y-4 lg:col-span-3">

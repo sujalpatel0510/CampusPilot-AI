@@ -22,5 +22,13 @@ class StudyMaterial(Base):
     subject: Mapped["Subject"] = relationship(back_populates="materials")
     uploader: Mapped["User"] = relationship()
 
+    @property
+    def subject_code(self) -> str:
+        return self.subject.code if self.subject else ""
+
+    @property
+    def subject_name(self) -> str:
+        return self.subject.name if self.subject else ""
+
     def __repr__(self) -> str:  # pragma: no cover
         return f"<StudyMaterial {self.title}>"

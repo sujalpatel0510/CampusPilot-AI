@@ -23,6 +23,7 @@ from app.models.timetable import TimetableEntry
 from app.models.user import User
 from app.schemas.common import MessageResponse
 from app.schemas.faculty import FacultyCreate, FacultyOut, FacultyUpdate
+from app.services.attendance_service import percentage_for, status_for
 from app.services.auth_service import hash_password, register_user
 
 logger = get_logger("faculty")
@@ -106,17 +107,25 @@ def subject_students(
             .filter(Attendance.student_id == student.id, Attendance.subject_id == subject_id)
             .first()
         )
+        percentage = (
+            percentage_for(attendance.attended_classes, attendance.total_classes)
+            if attendance and attendance.total_classes
+            else 0.0
+        )
         result.append(
             {
+                "id": student.id,
                 "student_id": student.student_id,
                 "full_name": student.user.full_name,
                 "email": student.user.email,
                 "department": student.department,
                 "semester": student.semester,
                 "section": student.section,
-                "attendance_percentage": round(
-                    (attendance.attended_classes / attendance.total_classes * 100), 2
-                ) if attendance and attendance.total_classes else 0,
+                "attendance_id": attendance.id if attendance else None,
+                "total_classes": attendance.total_classes if attendance else 0,
+                "attended_classes": attendance.attended_classes if attendance else 0,
+                "percentage": round(percentage, 2),
+                "status": status_for(percentage) if attendance else "NO_RECORD",
             }
         )
     return result

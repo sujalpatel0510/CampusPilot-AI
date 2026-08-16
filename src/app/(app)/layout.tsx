@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { AppShell } from "@/components/layout/app-shell";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,12 +9,23 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (loading) return;
+    if (!user) {
       router.replace("/login");
+      return;
     }
-  }, [loading, user, router]);
+    const isStudent = user.role === "student";
+    const onFacultyPath = pathname.startsWith("/faculty");
+    const onSharedPath = pathname === "/settings";
+    if (isStudent && onFacultyPath) {
+      router.replace("/dashboard");
+    } else if (!isStudent && !onFacultyPath && !onSharedPath) {
+      router.replace("/faculty/dashboard");
+    }
+  }, [loading, user, pathname, router]);
 
   if (loading) {
     return (

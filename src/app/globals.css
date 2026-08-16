@@ -63,10 +63,61 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+    background-image:
+      radial-gradient(42rem 42rem at 12% -8%, hsl(243 75% 59% / 0.16), transparent 60%),
+      radial-gradient(38rem 38rem at 108% 12%, hsl(271 81% 56% / 0.14), transparent 60%),
+      radial-gradient(36rem 36rem at 85% 105%, hsl(191 91% 50% / 0.1), transparent 60%),
+      radial-gradient(30rem 30rem at -10% 92%, hsl(271 81% 56% / 0.1), transparent 60%);
+    background-attachment: fixed;
+  }
+
+  .dark body {
+    background-image:
+      radial-gradient(42rem 42rem at 12% -8%, hsl(243 75% 59% / 0.22), transparent 60%),
+      radial-gradient(38rem 38rem at 108% 12%, hsl(271 81% 56% / 0.18), transparent 60%),
+      radial-gradient(36rem 36rem at 85% 105%, hsl(191 91% 50% / 0.14), transparent 60%),
+      radial-gradient(30rem 30rem at -10% 92%, hsl(271 81% 56% / 0.14), transparent 60%);
   }
 }
 
 @layer utilities {
+  /* Liquid glass — high opacity (not fully transparent) for readability. */
+  .glass {
+    background-color: hsl(var(--card) / 0.86);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    backdrop-filter: blur(24px) saturate(1.4);
+    border: 1px solid hsl(var(--border) / 0.55);
+    box-shadow:
+      0 1px 0 hsl(0 0% 100% / 0.5) inset,
+      0 10px 30px -12px hsl(222 47% 11% / 0.18);
+  }
+  .dark .glass {
+    border-color: hsl(var(--border) / 0.7);
+    box-shadow:
+      0 1px 0 hsl(0 0% 100% / 0.04) inset,
+      0 14px 36px -14px hsl(0 0% 0% / 0.55);
+  }
+  .glass-hover {
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  }
+  .glass-hover:hover {
+    transform: translateY(-1px);
+    border-color: hsl(var(--primary) / 0.35);
+    box-shadow:
+      0 1px 0 hsl(0 0% 100% / 0.5) inset,
+      0 16px 40px -14px hsl(243 75% 59% / 0.35);
+  }
+  .dark .glass-hover:hover {
+    box-shadow:
+      0 1px 0 hsl(0 0% 100% / 0.04) inset,
+      0 16px 44px -14px hsl(0 0% 0% / 0.6);
+  }
+  .glass-nav-item {
+    background-color: hsl(var(--card) / 0.45);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+  }
+
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--muted-foreground) / 0.4) transparent;

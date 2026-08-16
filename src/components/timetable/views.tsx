@@ -2,8 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import type { TimetableEntry } from "@/types";
-import { DAY_LABELS, formatTime12 } from "@/lib/utils";
-import { SUBJECTS } from "@/data/mock-data";
+import { DAY_LABELS, formatTime12, subjectColor } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 const HOURS = [9, 10, 11, 12, 13, 14, 15, 16];
@@ -40,7 +39,8 @@ export function WeekView({ entries }: { entries: TimetableEntry[] }) {
                   const day = dayIndex + 1;
                   const entry = byDay[dayIndex].find((e) => e.startTime === time);
                   if (!entry) return <td key={day} className="h-16 border-l p-1.5" />;
-                  const subject = SUBJECTS.find((s) => s.id === entry.subjectId);
+                  const color = subjectColor(entry.subjectCode ?? entry.subjectId);
+                  const subjectName = entry.subjectName ?? entry.subjectCode ?? "Subject";
                   const rowSpan = Math.round(
                     (parseInt(entry.endTime.split(":")[0]) - parseInt(entry.startTime.split(":")[0])) +
                       (parseInt(entry.endTime.split(":")[1]) - parseInt(entry.startTime.split(":")[1])) / 60
@@ -50,13 +50,13 @@ export function WeekView({ entries }: { entries: TimetableEntry[] }) {
                       <div
                         className="flex h-full min-h-14 flex-col justify-between rounded-md border p-2"
                         style={{
-                          backgroundColor: `${subject?.color}14`,
-                          borderColor: `${subject?.color}55`,
+                          backgroundColor: `${color}14`,
+                          borderColor: `${color}55`,
                         }}
                       >
                         <div>
-                          <p className="text-xs font-semibold" style={{ color: subject?.color }}>
-                            {subject?.name.split(" ").slice(0, 2).join(" ")}
+                          <p className="text-xs font-semibold" style={{ color }}>
+                            {subjectName.split(" ").slice(0, 2).join(" ")}
                           </p>
                           <p className="text-[10px] text-muted-foreground">
                             {formatTime12(entry.startTime)} – {formatTime12(entry.endTime)}
@@ -95,18 +95,19 @@ export function TodayView({ entries }: { entries: TimetableEntry[] }) {
   return (
     <div className="space-y-3">
       {sorted.map((entry) => {
-        const subject = SUBJECTS.find((s) => s.id === entry.subjectId);
+        const color = subjectColor(entry.subjectCode ?? entry.subjectId);
+        const subjectName = entry.subjectName ?? entry.subjectCode ?? "Subject";
         return (
           <div key={entry.id} className="flex items-center gap-4 rounded-lg border bg-card p-4 shadow-sm">
             <div className="flex w-24 shrink-0 flex-col items-center rounded-md bg-muted/50 py-2">
               <span className="text-sm font-bold">{formatTime12(entry.startTime)}</span>
               <span className="text-[10px] text-muted-foreground">– {formatTime12(entry.endTime)}</span>
             </div>
-            <span className="h-10 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: subject?.color }} />
+            <span className="h-10 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold">{subject?.name}</p>
+              <p className="truncate text-sm font-semibold">{subjectName}</p>
               <p className="text-xs text-muted-foreground">
-                {subject?.faculty} · Room {entry.room}
+                {entry.facultyName || "Faculty"} · Room {entry.room}
               </p>
             </div>
             <Badge variant={entry.type === "lab" ? "secondary" : "outline"} className="capitalize">

@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 from app.schemas.common import ORMModel
 
-WEEK_DAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
+WEEK_DAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 
 
 class TimetableBase(BaseModel):

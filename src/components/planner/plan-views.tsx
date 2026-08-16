@@ -8,8 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { StudyPlan, StudyPlanSlot } from "@/types";
-import { DAY_LABELS, formatTime12 } from "@/lib/utils";
-import { SUBJECTS } from "@/data/mock-data";
+import { DAY_LABELS, formatTime12, subjectColor } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 type ViewMode = "weekly" | "daily" | "calendar";
@@ -20,8 +19,8 @@ function slotDuration(slot: StudyPlanSlot): number {
   return eh * 60 + em - (sh * 60 + sm);
 }
 
-function subjectFor(slot: StudyPlanSlot) {
-  return SUBJECTS.find((s) => s.id === slot.subjectId);
+function subjectNameFor(slot: StudyPlanSlot): string {
+  return slot.subjectName ?? slot.subjectCode ?? slot.subjectId;
 }
 
 function SlotName({
@@ -31,16 +30,15 @@ function SlotName({
   slot: StudyPlanSlot;
   weakSubjectIds: Set<string>;
 }) {
-  const subject = subjectFor(slot);
   const isRevision = slot.type === "revision";
   const isWeak = !isRevision && weakSubjectIds.has(slot.subjectId);
   return (
     <div className="flex items-center gap-2">
       <span
         className="h-2.5 w-2.5 shrink-0 rounded-full"
-        style={{ backgroundColor: isRevision ? "hsl(262 83% 58%)" : subject?.color }}
+        style={{ backgroundColor: isRevision ? "hsl(262 83% 58%)" : subjectColor(slot.subjectCode ?? slot.subjectId) }}
       />
-      <span className="font-medium">{isRevision ? "Revision" : subject?.name}</span>
+      <span className="font-medium">{isRevision ? "Revision" : subjectNameFor(slot)}</span>
       {isRevision ? (
         <Badge variant="outline" className="border-violet-300 bg-violet-50 px-1.5 text-[10px] text-violet-700 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-400">
           Revision

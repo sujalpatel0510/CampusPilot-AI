@@ -4,8 +4,7 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Exam } from "@/types";
-import { DAY_LABELS } from "@/lib/utils";
-import { SUBJECTS } from "@/data/mock-data";
+import { DAY_LABELS, subjectColor } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 const MONTH_LABELS = [
@@ -90,7 +89,7 @@ export function ExamCalendar({ exams }: { exams: Exam[] }) {
                 <span
                   key={exam.id}
                   className="mt-0.5 w-full truncate rounded-full px-1.5 py-0.5 text-center text-[9px] font-semibold text-white"
-                  style={{ backgroundColor: SUBJECTS.find((s) => s.id === exam.subjectId)?.color }}
+                  style={{ backgroundColor: subjectColor(exam.subjectCode ?? exam.subjectId) }}
                   title={`${exam.title} — ${exam.startTime}`}
                 >
                   {exam.title.split(" ")[0]}
@@ -107,7 +106,7 @@ export function ExamCalendar({ exams }: { exams: Exam[] }) {
         ) : (
           monthExams.map((exam) => (
             <span key={exam.id} className="inline-flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: SUBJECTS.find((s) => s.id === exam.subjectId)?.color }} />
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: subjectColor(exam.subjectCode ?? exam.subjectId) }} />
               {new Date(exam.date).getDate()} {MONTH_LABELS[month].slice(0, 3)} — {exam.title}
             </span>
           ))

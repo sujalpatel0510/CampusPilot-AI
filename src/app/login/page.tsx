@@ -5,13 +5,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { useAuth, demoProfile } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import type { Role } from "@/types";
+
+function homeFor(role: Role): string {
+  return role === "student" ? "/dashboard" : "/faculty/dashboard";
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -34,33 +39,46 @@ export default function LoginPage() {
 
     setSubmitting(true);
     try {
-      const profile = await api.login(emailValue, passwordValue);
-      login(profile, remember);
-      toast.success(`Welcome back, ${profile.name.split(" ")[0]}!`);
-      router.replace("/dashboard");
-    } catch {
-      toast.error("Login failed. Please try again.");
+      const session = await api.login(emailValue, passwordValue);
+      login(session);
+      toast.success(`Welcome back, ${session.user.full_name.split(" ")[0]}!`);
+      router.replace(homeFor(session.user.role));
+    } catch (err) {
+      const message = err instanceof Error && err.message ? err.message : "Login failed. Please try again.";
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }
   }
 
-  function useDemo() {
-    void submit(demoProfile().email, "campus123");
+  function demoLogin(role: "student" | "faculty") {
+    const creds = {
+      student: { email: "sujal.sharma@nitd.ac.in", password: "campus123" },
+      faculty: { email: "anil.kumar@nitd.ac.in", password: "faculty123" },
+    }[role];
+    void submit(creds.email, creds.password);
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-muted/30 p-4">
-      <Link href="/" className="mb-8 flex items-center gap-2">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 shadow-sm">
-          <Sparkles className="h-5 w-5 text-white" />
-        </span>
-        <span className="text-lg font-bold tracking-tight">
-          CampusPilot <span className="text-primary">AI</span>
-        </span>
-      </Link>
+    <div className="flex min-h-screen flex-col bg-muted/30">
+      <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-md">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+          <Link href="/" className="flex items-center gap-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 shadow-sm">
+              <Sparkles className="h-4.5 w-4.5 text-white" />
+            </span>
+            <span className="text-lg font-bold tracking-tight">
+              CampusPilot <span className="text-primary">AI</span>
+            </span>
+          </Link>
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/register">Create account</Link>
+          </Button>
+        </div>
+      </header>
 
-      <Card className="w-full max-w-md">
+      <div className="flex flex-1 flex-col items-center justify-center p-4">
+        <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Welcome back</CardTitle>
           <CardDescription>Sign in to your campus account</CardDescription>
@@ -136,11 +154,16 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <Button variant="outline" className="w-full" onClick={useDemo} disabled={submitting}>
-            Use demo account
-          </Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" size="sm" className="w-full" onClick={() => demoLogin("student")} disabled={submitting}>
+              Student demo
+            </Button>
+            <Button variant="outline" size="sm" className="w-full" onClick={() => demoLogin("faculty")} disabled={submitting}>
+              Faculty demo
+            </Button>
+          </div>
           <p className="text-center text-[11px] text-muted-foreground">
-            Demo: sujal.sharma@nitd.ac.in · campus123
+            Student · sujal.sharma@nitd.ac.in / campus123
           </p>
 
           <p className="text-center text-sm text-muted-foreground">
@@ -149,8 +172,9 @@ export default function LoginPage() {
               Create an account
             </Link>
           </p>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

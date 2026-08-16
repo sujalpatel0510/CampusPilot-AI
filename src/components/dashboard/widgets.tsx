@@ -60,14 +60,18 @@ export function AttendanceCard({ data }: { data: Awaited<ReturnType<typeof api.g
         {data.subjects.some((s) => s.percentage < 75) ? (
           <p className="mt-4 flex items-center gap-1.5 rounded-md bg-amber-50 px-2.5 py-2 text-[11px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-            Digital Electronics is below 75%
+            {data.subjects
+              .filter((s) => s.percentage < 75)
+              .map((s) => s.subjectName?.split(" ")[0] ?? s.subjectId)
+              .join(", ")}{" "}
+            below 75%
           </p>
         ) : null}
         <div className="mt-4 space-y-3">
           {data.subjects.slice(0, 4).map((subject) => (
             <div key={subject.subjectId}>
               <div className="mb-1 flex items-center justify-between text-xs">
-                <span className="truncate font-medium">{subject.subjectId === "sub-de" ? "Digital Electronics" : subject.subjectId === "sub-math" ? "Probability & Stats" : subject.subjectId}</span>
+                <span className="truncate font-medium">{subject.subjectName ?? subject.subjectId}</span>
                 <span className={subject.percentage < 75 ? "font-semibold text-amber-600" : "text-muted-foreground"}>
                   {subject.percentage}%
                 </span>

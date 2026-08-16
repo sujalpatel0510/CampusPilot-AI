@@ -18,10 +18,14 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/lib/auth";
+import type { Role } from "@/types";
 
 export function Logo({ compact = false }: { compact?: boolean }) {
+  const { user } = useAuth();
+  const href = user?.role === "student" ? "/dashboard" : "/faculty/dashboard";
   return (
-    <Link href="/dashboard" className="flex items-center gap-2">
+    <Link href={href} className="flex items-center gap-2">
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 shadow-sm">
         <Sparkles className="h-4 w-4 text-white" />
       </span>
@@ -34,7 +38,14 @@ export function Logo({ compact = false }: { compact?: boolean }) {
   );
 }
 
-const NAV_GROUPS = [
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  badge?: string;
+}
+
+const STUDENT_NAV: { label: string; items: NavItem[] }[] = [
   {
     label: "Main",
     items: [
@@ -66,8 +77,39 @@ const NAV_GROUPS = [
   },
 ];
 
+const FACULTY_NAV: { label: string; items: NavItem[] }[] = [
+  {
+    label: "Main",
+    items: [{ href: "/faculty/dashboard", label: "Dashboard", icon: LayoutDashboard }],
+  },
+  {
+    label: "Academic",
+    items: [
+      { href: "/faculty/subjects", label: "My Subjects", icon: BookOpen },
+      { href: "/faculty/attendance", label: "Attendance", icon: Users },
+      { href: "/faculty/assignments", label: "Assignments", icon: ClipboardList },
+      { href: "/faculty/timetable", label: "Timetable", icon: CalendarDays },
+      { href: "/faculty/exams", label: "Exams", icon: CalendarClock },
+    ],
+  },
+  {
+    label: "Resources",
+    items: [
+      { href: "/faculty/notices", label: "Notices", icon: Megaphone },
+      { href: "/faculty/materials", label: "Study Materials", icon: BookOpen },
+    ],
+  },
+  {
+    label: "Account",
+    items: [{ href: "/settings", label: "Settings", icon: Settings }],
+  },
+];
+
 export function Sidebar({ className }: { className?: string }) {
   const pathname = usePathname();
+  const { user } = useAuth();
+  const role: Role = user?.role ?? "student";
+  const navGroups = role === "student" ? STUDENT_NAV : FACULTY_NAV;
 
   return (
     <div className={cn("flex h-full flex-col gap-6 overflow-y-auto px-3 py-5 scrollbar-thin", className)}>
@@ -75,7 +117,7 @@ export function Sidebar({ className }: { className?: string }) {
         <Logo />
       </div>
       <nav className="flex-1 space-y-6">
-        {NAV_GROUPS.map((group) => (
+        {navGroups.map((group) => (
           <div key={group.label}>
             <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               {group.label}
@@ -110,19 +152,28 @@ export function Sidebar({ className }: { className?: string }) {
           </div>
         ))}
       </nav>
-      <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
-        <p className="text-xs font-semibold text-primary">Need help?</p>
-        <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
-          Ask CampusPilot AI about exams, attendance or your schedule.
-        </p>
-        <Link
-          href="/assistant"
-          className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
-        >
-          <Bot className="h-3 w-3" />
-          Open AI Assistant
-        </Link>
-      </div>
+      {role === "student" ? (
+        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+          <p className="text-xs font-semibold text-primary">Need help?</p>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+            Ask CampusPilot AI about exams, attendance or your schedule.
+          </p>
+          <Link
+            href="/assistant"
+            className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+          >
+            <Bot className="h-3 w-3" />
+            Open AI Assistant
+          </Link>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-border/60 bg-muted/40 p-3">
+          <p className="text-xs font-semibold text-foreground">Faculty workspace</p>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+            Manage your subjects, attendance, exams and study resources.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

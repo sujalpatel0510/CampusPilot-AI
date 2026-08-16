@@ -11,7 +11,7 @@ import { useApi } from "@/hooks/use-api";
 import { api } from "@/lib/api";
 
 export default function ExamsPage() {
-  const { data, loading, error, refetch } = useApi(() => api.getExams());
+  const { data, loading, error, refetch } = useApi(() => api.getExams(), [], { key: "exams" });
 
   if (error) {
     return (

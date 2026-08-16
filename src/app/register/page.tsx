@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register } = useAuth();
+  const { login } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -43,29 +43,38 @@ export default function RegisterPage() {
 
     setSubmitting(true);
     try {
-      const profile = await api.register(name.trim(), email, course, Number(semester));
-      register(profile);
+      const session = await api.register(name.trim(), email, password, course, Number(semester));
+      login(session);
       toast.success("Account created. Welcome to CampusPilot AI!");
       router.replace("/dashboard");
-    } catch {
-      toast.error("Registration failed. Please try again.");
+    } catch (err) {
+      const message = err instanceof Error && err.message ? err.message : "Registration failed. Please try again.";
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-muted/30 p-4">
-      <Link href="/" className="mb-8 flex items-center gap-2">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 shadow-sm">
-          <Sparkles className="h-5 w-5 text-white" />
-        </span>
-        <span className="text-lg font-bold tracking-tight">
-          CampusPilot <span className="text-primary">AI</span>
-        </span>
-      </Link>
+    <div className="flex min-h-screen flex-col bg-muted/30">
+      <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-md">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+          <Link href="/" className="flex items-center gap-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 shadow-sm">
+              <Sparkles className="h-4.5 w-4.5 text-white" />
+            </span>
+            <span className="text-lg font-bold tracking-tight">
+              CampusPilot <span className="text-primary">AI</span>
+            </span>
+          </Link>
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/login">Sign in</Link>
+          </Button>
+        </div>
+      </header>
 
-      <Card className="w-full max-w-lg">
+      <div className="flex flex-1 flex-col items-center justify-center p-4">
+        <Card className="w-full max-w-lg">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Create your account</CardTitle>
           <CardDescription>Join with your college email to get started</CardDescription>
@@ -190,8 +199,9 @@ export default function RegisterPage() {
               Sign in
             </Link>
           </p>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

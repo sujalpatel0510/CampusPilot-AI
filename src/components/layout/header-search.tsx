@@ -7,7 +7,6 @@ import { CalendarClock, ClipboardList, FileText, GraduationCap, Search, Users } 
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
-import { SUBJECTS } from "@/data/mock-data";
 
 interface HeaderSearchProps {
   open: boolean;
@@ -60,30 +59,31 @@ export function HeaderSearch({ open, onOpenChange }: HeaderSearchProps) {
     const timer = setTimeout(async () => {
       const q = query.toLowerCase();
       try {
-        const [assignments, exams, notices] = await Promise.all([
+        const [assignments, exams, notices, subjects] = await Promise.all([
           api.getAssignments(),
           api.getExams(),
           api.getNotices(),
+          api.getSubjects(),
         ]);
         if (cancelled) return;
         const groups: ResultGroup[] = [
           ...assignments
-            .filter((a) => a.title.toLowerCase().includes(q) || SUBJECTS.find((s) => s.id === a.subjectId)?.name.toLowerCase().includes(q))
+            .filter((a) => a.title.toLowerCase().includes(q) || a.subjectName?.toLowerCase().includes(q) || a.subjectCode?.toLowerCase().includes(q))
             .slice(0, 3)
             .map((a) => ({
               type: "assignment" as const,
               title: a.title,
-              subtitle: `Assignment · due ${formatDate(a.dueDate)}`,
+              subtitle: `Assignment · ${a.subjectName ?? ""} · due ${formatDate(a.dueDate)}`,
               href: "/assignments",
               icon: ClipboardList,
             })),
           ...exams
-            .filter((e) => e.title.toLowerCase().includes(q) || SUBJECTS.find((s) => s.id === e.subjectId)?.name.toLowerCase().includes(q))
+            .filter((e) => e.title.toLowerCase().includes(q) || e.subjectName?.toLowerCase().includes(q) || e.subjectCode?.toLowerCase().includes(q))
             .slice(0, 3)
             .map((e) => ({
               type: "exam" as const,
               title: e.title,
-              subtitle: `Exam · ${formatDate(e.date)}`,
+              subtitle: `Exam · ${e.subjectName ?? ""} · ${formatDate(e.date)}`,
               href: "/exams",
               icon: CalendarClock,
             })),
@@ -97,12 +97,13 @@ export function HeaderSearch({ open, onOpenChange }: HeaderSearchProps) {
               href: "/notices",
               icon: FileText,
             })),
-          ...SUBJECTS.filter((s) => s.name.toLowerCase().includes(q))
+          ...subjects
+            .filter((s) => s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q))
             .slice(0, 3)
             .map((s) => ({
               type: "subject" as const,
               title: s.name,
-              subtitle: `${s.code} · ${s.faculty}`,
+              subtitle: `${s.code} · ${s.faculty || "Subject"}`,
               href: "/timetable",
               icon: GraduationCap,
             })),

@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bot, Menu, MessageSquare } from "lucide-react";
+import { Bot, Menu } from "lucide-react";
 import { toast } from "sonner";
 import { useApi } from "@/hooks/use-api";
 import { api } from "@/lib/api";
-import type { Conversation } from "@/types";
+import type { ChatMessage, Conversation } from "@/types";
 import { ConversationSidebar } from "@/components/assistant/conversation-sidebar";
-import { ChatMessage } from "@/components/assistant/chat-message";
+import { ChatMessage as ChatMessageView } from "@/components/assistant/chat-message";
 import { TypingIndicator } from "@/components/assistant/typing-indicator";
 import { ChatInput } from "@/components/assistant/chat-input";
 import { SuggestedPrompts } from "@/components/assistant/suggested-prompts";
@@ -15,15 +15,23 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AssistantPage() {
-  const { data: conversations, loading, refetch } = useApi(() => api.getConversations());
+  const { data: conversations, loading, refetch } = useApi(() => api.getConversations(), [], { key: "conversations" });
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Record<string, ChatMessage[]>>({});
   const [typing, setTyping] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const initializedRef = useRef(false);
 
-  const activeConversation = conversations?.find((c) => c.id === activeId) ?? null;
-  const hasMessages = (activeConversation?.messages.length ?? 0) > 0;
+  const activeMessages = activeId ? (messages[activeId] ?? []) : [];
+  const hasMessages = activeMessages.length > 0;
+
+  const appendMessage = useCallback((conversationId: string, message: ChatMessage) => {
+    setMessages((prev) => ({
+      ...prev,
+      [conversationId]: [...(prev[conversationId] ?? []), message],
+    }));
+  }, []);
 
   useEffect(() => {
     if (loading || initializedRef.current) return;
@@ -40,7 +48,34 @@ export default function AssistantPage() {
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [activeConversation?.messages.length, typing]);
+  }, [activeMessages.length, typing]);
+
+  const sendMessage = useCallback(
+    async (conversationId: string, content: string) => {
+      appendMessage(conversationId, {
+        id: `user-${Date.now()}`,
+        role: "user",
+        content,
+        timestamp: new Date().toISOString(),
+      });
+      setTyping(true);
+      try {
+        const result = await api.chat(content, conversationId);
+        appendMessage(conversationId, {
+          id: `bot-${Date.now()}`,
+          role: "assistant",
+          content: result.reply,
+          timestamp: new Date().toISOString(),
+        });
+        refetch();
+      } catch {
+        toast.error("The assistant could not reply right now.");
+      } finally {
+        setTyping(false);
+      }
+    },
+    [appendMessage, refetch]
+  );
 
   const startNewConversation = useCallback(
     async (initialPrompt?: string) => {
@@ -55,23 +90,7 @@ export default function AssistantPage() {
         toast.error("Could not start a new conversation.");
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
-
-  const sendMessage = useCallback(
-    async (conversationId: string, content: string) => {
-      setTyping(true);
-      try {
-        await api.getAiReply(conversationId, content);
-        refetch();
-      } catch {
-        toast.error("The assistant could not reply right now.");
-      } finally {
-        setTyping(false);
-      }
-    },
-    [refetch]
+    [refetch, sendMessage]
   );
 
   function handleSend(content: string) {
@@ -86,6 +105,11 @@ export default function AssistantPage() {
     try {
       await api.deleteConversation(id);
       refetch();
+      setMessages((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
       if (activeId === id) setActiveId(null);
       toast.success("Conversation deleted.");
     } catch {
@@ -138,11 +162,11 @@ export default function AssistantPage() {
           </span>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">
-              {activeConversation?.title ?? "CampusPilot AI"}
+              {conversations?.find((c) => c.id === activeId)?.title ?? "CampusPilot AI"}
             </p>
             <p className="text-[11px] text-muted-foreground">
               {hasMessages
-                ? `${activeConversation!.messages.length} messages`
+                ? `${activeMessages.length} messages`
                 : "Online · answers from your campus data"}
             </p>
           </div>
@@ -165,8 +189,8 @@ export default function AssistantPage() {
             </div>
           ) : (
             <>
-              {activeConversation?.messages.map((message) => (
-                <ChatMessage key={message.id} message={message} />
+              {activeMessages.map((message) => (
+                <ChatMessageView key={message.id} message={message} />
               ))}
               {typing ? <TypingIndicator /> : null}
             </>

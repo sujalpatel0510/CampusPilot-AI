@@ -7,8 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import type { PreferredTime, StudyPlanForm } from "@/types";
-import { SUBJECTS } from "@/data/mock-data";
+import type { PreferredTime, StudyPlanForm, Subject } from "@/types";
 import { cn } from "@/lib/utils";
 
 const TIME_OPTIONS: { value: PreferredTime; label: string; icon: React.ElementType; hint: string }[] = [
@@ -21,9 +20,10 @@ interface PlanFormProps {
   initial: StudyPlanForm;
   onGenerate: (form: StudyPlanForm) => void;
   generating: boolean;
+  subjects: Subject[];
 }
 
-export function PlanForm({ initial, onGenerate, generating }: PlanFormProps) {
+export function PlanForm({ initial, onGenerate, generating, subjects }: PlanFormProps) {
   const [examDates, setExamDates] = useState<Record<string, string>>(initial.examDates);
   const [availableHours, setAvailableHours] = useState(initial.availableHours);
   const [weakSubjects, setWeakSubjects] = useState<string[]>(initial.weakSubjects);
@@ -70,7 +70,7 @@ export function PlanForm({ initial, onGenerate, generating }: PlanFormProps) {
             Exam dates
           </Label>
           <div className="grid gap-2.5 sm:grid-cols-2">
-            {SUBJECTS.slice(0, 5).map((subject) => (
+            {subjects.slice(0, 5).map((subject) => (
               <div key={subject.id} className="flex items-center gap-2">
                 <span
                   className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[9px] font-bold text-white"
@@ -128,7 +128,7 @@ export function PlanForm({ initial, onGenerate, generating }: PlanFormProps) {
             Weak subjects
           </Label>
           <div className="flex flex-wrap gap-2">
-            {SUBJECTS.map((subject) => {
+            {subjects.map((subject) => {
               const selected = weakSubjects.includes(subject.id);
               return (
                 <button

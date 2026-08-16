@@ -5,7 +5,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useCountdown } from "@/hooks/use-countdown";
 import type { Exam } from "@/types";
 import { formatDate, formatTime12 } from "@/lib/utils";
-import { SUBJECTS } from "@/data/mock-data";
 import { cn } from "@/lib/utils";
 
 function TimeUnit({ value, label }: { value: number; label: string }) {
@@ -23,7 +22,6 @@ function TimeUnit({ value, label }: { value: number; label: string }) {
 
 export function CountdownCard({ exam }: { exam: Exam }) {
   const countdown = useCountdown(exam.date + "T" + exam.startTime);
-  const subject = SUBJECTS.find((s) => s.id === exam.subjectId);
 
   if (!countdown) {
     return (
@@ -48,7 +46,7 @@ export function CountdownCard({ exam }: { exam: Exam }) {
 
         <h2 className="mt-2 text-xl font-bold sm:text-2xl">{exam.title}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {subject?.name} · {formatDate(exam.date)}
+          {exam.subjectName || exam.subjectCode || ""} · {formatDate(exam.date)}
         </p>
 
         <div className="mt-6 flex items-center justify-center gap-4 sm:gap-6">
@@ -77,7 +75,6 @@ export function CountdownCard({ exam }: { exam: Exam }) {
 }
 
 export function ExamCard({ exam }: { exam: Exam }) {
-  const subject = SUBJECTS.find((s) => s.id === exam.subjectId);
   const done = exam.completed;
 
   return (
@@ -87,7 +84,7 @@ export function ExamCard({ exam }: { exam: Exam }) {
           <div className="min-w-0">
             <p className="text-sm font-semibold">{exam.title}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              {subject?.name} · {exam.type.replace("-", " ")}
+              {exam.subjectName || exam.subjectCode || ""} · {exam.type.replace("-", " ")}
             </p>
           </div>
           <span

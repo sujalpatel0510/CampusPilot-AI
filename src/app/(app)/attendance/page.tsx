@@ -12,7 +12,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useApi } from "@/hooks/use-api";
 import { api } from "@/lib/api";
-import { SUBJECTS } from "@/data/mock-data";
 import { AttendanceBadge } from "@/components/attendance/attendance-badge";
 
 const AttendanceBarChart = dynamic(
@@ -26,7 +25,7 @@ const AttendanceAreaChart = dynamic(
 );
 
 export default function AttendancePage() {
-  const { data, loading, error, refetch } = useApi(() => api.getAttendance());
+  const { data, loading, error, refetch } = useApi(() => api.getAttendance(), [], { key: "attendance" });
 
   if (error) {
     return (
@@ -85,7 +84,7 @@ export default function AttendancePage() {
                   <p className="mt-0.5 text-sm text-muted-foreground">
                     {data.subjects
                       .filter((s) => s.percentage < 75)
-                      .map((s) => SUBJECTS.find((sub) => sub.id === s.subjectId)?.name.split(" ")[0])
+                      .map((s) => s.subjectName?.split(" ")[0] ?? s.subjectCode ?? s.subjectId)
                       .join(", ")}{" "}
                     {data.subjects.filter((s) => s.percentage < 75).length === 1 ? "is" : "are"} below the 75% requirement.{" "}
                     Attend the next classes without fail to avoid being debarred from exams.
@@ -112,11 +111,11 @@ export default function AttendancePage() {
               </CardContent>
               <CardContent className="space-y-3">
                 {data.subjects.map((subject) => {
-                  const name = SUBJECTS.find((s) => s.id === subject.subjectId)?.name ?? subject.subjectId;
+                  const name = subject.subjectName ?? subject.subjectId;
                   return (
                     <div key={subject.subjectId} className="flex items-center justify-between gap-3 text-sm">
                       <span className="flex min-w-0 items-center gap-2">
-                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: SUBJECTS.find((s) => s.id === subject.subjectId)?.color }} />
+                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: subject.color }} />
                         <span className="truncate">{name.split(" ").slice(0, 2).join(" ")}</span>
                       </span>
                       <span className="text-xs text-muted-foreground">
@@ -167,12 +166,11 @@ export default function AttendancePage() {
                 </TableHeader>
                 <TableBody>
                   {data.subjects.map((subject) => {
-                    const info = SUBJECTS.find((s) => s.id === subject.subjectId);
                     return (
                       <TableRow key={subject.subjectId}>
-                        <TableCell className="font-medium">{info?.name}</TableCell>
-                        <TableCell className="text-muted-foreground">{info?.code}</TableCell>
-                        <TableCell className="text-muted-foreground">{info?.faculty}</TableCell>
+                        <TableCell className="font-medium">{subject.subjectName ?? subject.subjectId}</TableCell>
+                        <TableCell className="text-muted-foreground">{subject.subjectCode ?? "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">—</TableCell>
                         <TableCell className="text-right">
                           {subject.attended}/{subject.totalClasses}
                         </TableCell>

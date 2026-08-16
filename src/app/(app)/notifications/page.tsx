@@ -43,7 +43,7 @@ const TABS: { value: "all" | NotificationType; label: string }[] = [
 const PAGE_SIZE = 8;
 
 export default function NotificationsPage() {
-  const { data, loading, error, refetch } = useApi(() => api.getNotifications());
+  const { data, loading, error, refetch } = useApi(() => api.getNotifications(), [], { key: "notifications" });
   const [tab, setTab] = useState<"all" | NotificationType>("all");
   const [page, setPage] = useState(1);
 

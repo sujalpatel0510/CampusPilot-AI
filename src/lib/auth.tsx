@@ -1,73 +1,82 @@
 "use client";
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import type { StudentProfile } from "@/types";
-import { STUDENT_PROFILE } from "@/data/mock-data";
+import type { AuthUser, Session } from "@/types";
+import { clearApiCache } from "@/hooks/use-api";
 
 const STORAGE_KEY = "campus-pilot-session";
 
 interface AuthContextValue {
-  user: StudentProfile | null;
+  user: AuthUser | null;
   loading: boolean;
-  login: (user: StudentProfile, remember?: boolean) => void;
-  register: (user: StudentProfile) => void;
+  login: (session: Session) => void;
   logout: () => void;
-  updateProfile: (patch: Partial<StudentProfile>) => Promise<void>;
+  updateProfile: (patch: Partial<AuthUser>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-function readSession(): StudentProfile | null {
+export function getStoredSession(): Session | null {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as StudentProfile;
+    if (raw) return JSON.parse(raw) as Session;
   } catch {
     // ignore corrupt session
   }
   return null;
 }
 
+export function clearSession() {
+  window.localStorage.removeItem(STORAGE_KEY);
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<StudentProfile | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setUser(readSession());
+    const session = getStoredSession();
+    if (session) setUser(session.user);
     setLoading(false);
-  }, []);
 
-  const login = useCallback((profile: StudentProfile, remember = true) => {
-    setUser(profile);
-    if (remember) {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+    function onUnauthorized() {
+      clearSession();
+      clearApiCache();
+      setUser(null);
     }
+    window.addEventListener("campuspilot:unauthorized", onUnauthorized);
+    return () => window.removeEventListener("campuspilot:unauthorized", onUnauthorized);
   }, []);
 
-  const register = useCallback((profile: StudentProfile) => {
-    setUser(profile);
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+  const login = useCallback((session: Session) => {
+    clearApiCache();
+    setUser(session.user);
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
   }, []);
 
   const logout = useCallback(() => {
+    clearApiCache();
+    clearSession();
     setUser(null);
-    window.localStorage.removeItem(STORAGE_KEY);
   }, []);
 
-  const updateProfile = useCallback(
-    async (patch: Partial<StudentProfile>) => {
-      await new Promise((resolve) => setTimeout(resolve, 150));
-      setUser((prev) => {
-        const next = prev ? { ...prev, ...patch } : prev;
-        if (next) window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-        return next;
-      });
-    },
-    []
-  );
+  const updateProfile = useCallback(async (patch: Partial<AuthUser>) => {
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    setUser((prev) => {
+      const next = prev ? { ...prev, ...patch } : prev;
+      if (next) {
+        const session = getStoredSession();
+        if (session) {
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...session, user: next }));
+        }
+      }
+      return next;
+    });
+  }, []);
 
   const value = useMemo(
-    () => ({ user, loading, login, register, logout, updateProfile }),
-    [user, loading, login, register, logout, updateProfile]
+    () => ({ user, loading, login, logout, updateProfile }),
+    [user, loading, login, logout, updateProfile]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -79,8 +88,4 @@ export function useAuth(): AuthContextValue {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
-}
-
-export function demoProfile(): StudentProfile {
-  return STUDENT_PROFILE;
 }

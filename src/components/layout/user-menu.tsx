@@ -15,7 +15,8 @@ import { useAuth } from "@/lib/auth";
 
 export function UserMenu() {
   const { user, logout } = useAuth();
-  const initials = (user?.name ?? "U")
+  const displayName = user?.full_name ?? user?.email ?? "User";
+  const initials = displayName
     .split(" ")
     .map((w) => w[0])
     .slice(0, 2)
@@ -33,8 +34,11 @@ export function UserMenu() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60">
         <DropdownMenuLabel>
-          <p className="text-sm font-semibold">{user?.name ?? "Student"}</p>
+          <p className="text-sm font-semibold">{displayName}</p>
           <p className="text-xs font-normal text-muted-foreground">{user?.email ?? ""}</p>
+          <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-primary">
+            {user?.role ?? "student"}
+          </p>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>

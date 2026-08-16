@@ -5,7 +5,6 @@ import { FileText, Megaphone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { PageHeader } from "@/components/shared/page-header";
 import { SearchBar } from "@/components/shared/search-bar";
 import { FilterDropdown } from "@/components/shared/filter-dropdown";
@@ -14,7 +13,6 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { ErrorState } from "@/components/shared/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AiSummaryDialog, AiSummaryButton } from "@/components/notices/ai-summary-dialog";
-import { PdfUploadZone } from "@/components/notices/pdf-upload-zone";
 import { useApi } from "@/hooks/use-api";
 import { api } from "@/lib/api";
 import type { Notice, NoticeCategory } from "@/types";
@@ -33,7 +31,7 @@ const CATEGORIES: NoticeCategory[] = ["Examination", "Academic", "Event", "Fee",
 const PAGE_SIZE = 5;
 
 export default function NoticesPage() {
-  const { data, loading, error, refetch } = useApi(() => api.getNotices());
+  const { data, loading, error, refetch } = useApi(() => api.getNotices(), [], { key: "notices" });
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
   const [page, setPage] = useState(1);
@@ -143,23 +141,6 @@ export default function NoticesPage() {
         </div>
 
         <div className="space-y-4">
-          <Card>
-            <CardContent className="p-5">
-              <h2 className="flex items-center gap-2 font-semibold">
-                <span className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-indigo-600 to-violet-600">
-                  <FileText className="h-3.5 w-3.5 text-white" />
-                </span>
-                Upload a notice for AI processing
-              </h2>
-              <p className="mt-1.5 text-sm text-muted-foreground">
-                Upload an official PDF and CampusPilot AI will extract the text and generate a
-                summary (OCR pipeline — preview only in this demo).
-              </p>
-              <Separator className="my-4" />
-              <PdfUploadZone />
-            </CardContent>
-          </Card>
-
           <Card>
             <CardContent className="p-5">
               <h2 className="font-semibold">How AI summaries work</h2>

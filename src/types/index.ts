@@ -33,6 +33,9 @@ export interface AttendanceRecord {
   percentage: number
   status: AttendanceStatus
   trend: number[]
+  subjectName?: string
+  subjectCode?: string
+  color?: string
 }
 
 export interface AttendanceOverview {
@@ -54,6 +57,9 @@ export interface TimetableEntry {
   room: string
   type: 'lecture' | 'lab'
   frequency: 'weekly' | 'alternate'
+  subjectName?: string
+  subjectCode?: string
+  facultyName?: string
 }
 
 export type AssignmentStatus = 'pending' | 'completed' | 'overdue'
@@ -67,6 +73,10 @@ export interface Assignment {
   submitted: boolean
   status: AssignmentStatus
   weightage: number
+  priority?: string
+  subjectName?: string
+  subjectCode?: string
+  subjectColor?: string
 }
 
 export interface Exam {
@@ -81,6 +91,9 @@ export interface Exam {
   completed: boolean
   marks: number
   syllabus: string[]
+  subjectName?: string
+  subjectCode?: string
+  daysLeft?: number
 }
 
 export type NoticeCategory = 'Examination' | 'Academic' | 'Event' | 'Fee' | 'Placement' | 'General'
@@ -117,6 +130,8 @@ export interface StudyMaterial {
   uploadedBy: string
   uploadDate: string
   downloads: number
+  subjectName?: string
+  subjectCode?: string
 }
 
 export type NotificationType = 'assignment' | 'attendance' | 'exam' | 'notice' | 'general'
@@ -166,6 +181,8 @@ export interface StudyPlanSlot {
   subjectId: string
   topic: string
   type: StudyPlanSlotType
+  subjectName?: string
+  subjectCode?: string
 }
 
 export interface StudyPlan {
@@ -192,4 +209,145 @@ export interface UploadedFileRecord {
   size: string
   uploadDate: string
   status: 'processing' | 'done'
+}
+
+// ---------------------------------------------------------------------------
+// Backend session & roles
+// ---------------------------------------------------------------------------
+
+export type Role = 'student' | 'faculty' | 'admin'
+
+export interface AuthUser {
+  id: number
+  email: string
+  full_name: string
+  role: Role
+  student_id?: string | null
+  employee_id?: string | null
+  department?: string | null
+  college?: string | null
+  course?: string | null
+  semester?: number | null
+}
+
+export interface Session {
+  accessToken: string
+  refreshToken: string
+  user: AuthUser
+}
+
+export interface FacultyProfile {
+  id: number
+  user_id: number
+  employee_id: string
+  department: string
+  full_name: string
+  email: string
+  role: Role
+  is_active: boolean
+}
+
+export interface FacultySubject {
+  id: number
+  name: string
+  code: string
+  department: string
+  semester: number
+  credits: number
+}
+
+export interface SubjectStudent {
+  id: number
+  student_id: string
+  full_name: string
+  email: string
+  total_classes: number
+  attended_classes: number
+  percentage: number
+  status: string
+  attendance_id?: number | null
+}
+
+export interface FacultyAssignment {
+  id: number
+  subject_id: number
+  faculty_id: number
+  title: string
+  description: string
+  due_date: string
+  priority: string
+  created_at: string
+  subject_code: string
+  subject_name: string
+  status?: string | null
+}
+
+export interface FacultyTimetableEntry {
+  id: number
+  subject_id: number
+  faculty_id: number
+  department: string
+  semester: number
+  section: string
+  day_of_week: string
+  start_time: string
+  end_time: string
+  room: string
+  subject_code: string
+  subject_name: string
+  faculty_name: string
+}
+
+export interface FacultyExam {
+  id: number
+  subject_id: number
+  department: string
+  semester: number
+  section: string
+  exam_type: string
+  exam_date: string
+  start_time: string
+  end_time: string
+  room: string
+  subject_code: string
+  subject_name: string
+  days_left?: number | null
+  is_today?: boolean
+}
+
+export interface FacultyNotice {
+  id: number
+  title: string
+  original_file_url: string
+  extracted_text: string
+  ai_summary: string
+  category: string
+  is_important: boolean
+  created_at: string
+}
+
+export interface FacultyMaterial {
+  id: number
+  subject_id: number
+  title: string
+  description: string
+  file_url: string
+  file_type: string
+  file_size: number
+  created_at: string
+  subject_code: string
+  subject_name: string
+}
+
+export interface AttendanceRecordRow {
+  id: number
+  student_id: number
+  subject_id: number
+  subject_code: string
+  subject_name: string
+  total_classes: number
+  attended_classes: number
+  missed_classes: number
+  percentage: number
+  status: string
 }

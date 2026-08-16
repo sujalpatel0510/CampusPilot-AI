@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { CloudUpload, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/shared/page-header";
@@ -12,22 +11,21 @@ import { FilterDropdown } from "@/components/shared/filter-dropdown";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ErrorState } from "@/components/shared/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
-import { UploadMaterialDialog, DownloadButton, MaterialTypeIcon } from "@/components/materials/upload-dialog";
+import { DownloadButton, MaterialTypeIcon } from "@/components/materials/material-icon";
 import { useApi } from "@/hooks/use-api";
 import { api } from "@/lib/api";
 import type { MaterialCategory, StudyMaterial } from "@/types";
 import { formatDate } from "@/lib/utils";
-import { SUBJECTS } from "@/data/mock-data";
 
 const CATEGORIES: MaterialCategory[] = ["Notes", "PDFs", "Previous Year Papers", "Presentations", "Assignments"];
 
 export default function StudyMaterialsPage() {
-  const { data, loading, error, refetch } = useApi(() => api.getStudyMaterials());
+  const { data, loading, error, refetch } = useApi(() => api.getStudyMaterials(), [], { key: "materials" });
+  const subjects = useApi(() => api.getSubjects(), [], { key: "subjects" });
   const [tab, setTab] = useState<"all" | MaterialCategory>("all");
   const [query, setQuery] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [uploadOpen, setUploadOpen] = useState(false);
 
   const filtered = (data ?? [])
     .filter((m) => {
@@ -36,7 +34,11 @@ export default function StudyMaterialsPage() {
       if (typeFilter !== "all" && m.fileType !== typeFilter) return false;
       if (query.trim()) {
         const q = query.toLowerCase();
-        return m.name.toLowerCase().includes(q) || SUBJECTS.find((s) => s.id === m.subjectId)?.name.toLowerCase().includes(q);
+        return (
+          m.name.toLowerCase().includes(q) ||
+          (m.subjectName ?? "").toLowerCase().includes(q) ||
+          (m.subjectCode ?? "").toLowerCase().includes(q)
+        );
       }
       return true;
     })
@@ -55,17 +57,10 @@ export default function StudyMaterialsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <PageHeader
-          title="Study Materials"
-          description="Notes, papers and slides from your courses"
-          className="mb-0"
-        />
-        <Button onClick={() => setUploadOpen(true)}>
-          <CloudUpload className="h-4 w-4" />
-          Upload
-        </Button>
-      </div>
+      <PageHeader
+        title="Study Materials"
+        description="Notes, papers and slides from your courses"
+      />
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as "all" | MaterialCategory)}>
         <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
@@ -84,7 +79,10 @@ export default function StudyMaterialsPage() {
               label="Subject"
               value={subjectFilter}
               onChange={setSubjectFilter}
-              options={[{ value: "all", label: "All subjects" }, ...SUBJECTS.map((s) => ({ value: s.id, label: s.name }))]}
+              options={[
+                { value: "all", label: "All subjects" },
+                ...(subjects.data ?? []).map((s) => ({ value: s.id, label: s.name })),
+              ]}
             />
             <FilterDropdown
               label="File type"
@@ -106,19 +104,12 @@ export default function StudyMaterialsPage() {
           ) : filtered.length === 0 ? (
             <EmptyState
               title="No materials found"
-              description={query || subjectFilter !== "all" || typeFilter !== "all" ? "Try adjusting your filters." : "Upload your first study material to get started."}
+              description={query || subjectFilter !== "all" || typeFilter !== "all" ? "Try adjusting your filters." : "Study materials shared by your faculty will appear here."}
               icon={FileText}
-              action={
-                <Button variant="outline" onClick={() => setUploadOpen(true)}>
-                  <CloudUpload className="h-4 w-4" />
-                  Upload material
-                </Button>
-              }
             />
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {filtered.map((material) => {
-                const subject = SUBJECTS.find((s) => s.id === material.subjectId);
                 return (
                   <Card key={material.id}>
                     <CardContent className="p-4">
@@ -129,7 +120,7 @@ export default function StudyMaterialsPage() {
                             {material.name}
                           </p>
                           <p className="mt-0.5 text-xs text-muted-foreground">
-                            {subject?.name ?? "General"} · {material.size}
+                            {material.subjectName || material.subjectCode || "General"} · {material.size}
                           </p>
                           <div className="mt-2 flex items-center gap-1.5">
                             <Badge variant="secondary" className="text-[10px]">
@@ -150,12 +141,6 @@ export default function StudyMaterialsPage() {
           )}
         </TabsContent>
       </Tabs>
-
-      <UploadMaterialDialog
-        open={uploadOpen}
-        onOpenChange={setUploadOpen}
-        onUploaded={() => refetch()}
-      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-"""Timetable endpoints (read: any authenticated user, write: admin)."""
+"""Timetable endpoints (read: any authenticated user, write: admin/faculty)."""
 
 from typing import Optional
 
@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.exceptions import NotFoundError
-from app.core.security import get_current_user, require_admin
+from app.core.security import get_current_user, require_faculty_or_admin
 from app.models.timetable import TimetableEntry
 from app.models.user import User
 from app.schemas.common import MessageResponse
@@ -69,10 +69,10 @@ def get_entry(
     return _entry_out(entry)
 
 
-@router.post("", response_model=dict, summary="Create a timetable entry (admin)")
+@router.post("", response_model=dict, summary="Create a timetable entry (admin/faculty)")
 def create_entry(
     payload: TimetableEntryCreate,
-    _: User = Depends(require_admin),
+    _: User = Depends(require_faculty_or_admin),
     db: Session = Depends(get_db),
 ):
     entry = TimetableEntry(**payload.model_dump())
@@ -82,11 +82,11 @@ def create_entry(
     return _entry_out(entry)
 
 
-@router.put("/{entry_id}", response_model=dict, summary="Update a timetable entry (admin)")
+@router.put("/{entry_id}", response_model=dict, summary="Update a timetable entry (admin/faculty)")
 def update_entry(
     entry_id: int,
     payload: TimetableEntryUpdate,
-    _: User = Depends(require_admin),
+    _: User = Depends(require_faculty_or_admin),
     db: Session = Depends(get_db),
 ):
     entry = db.get(TimetableEntry, entry_id)
@@ -99,10 +99,10 @@ def update_entry(
     return _entry_out(entry)
 
 
-@router.delete("/{entry_id}", response_model=MessageResponse, summary="Delete a timetable entry (admin)")
+@router.delete("/{entry_id}", response_model=MessageResponse, summary="Delete a timetable entry (admin/faculty)")
 def delete_entry(
     entry_id: int,
-    _: User = Depends(require_admin),
+    _: User = Depends(require_faculty_or_admin),
     db: Session = Depends(get_db),
 ):
     entry = db.get(TimetableEntry, entry_id)
