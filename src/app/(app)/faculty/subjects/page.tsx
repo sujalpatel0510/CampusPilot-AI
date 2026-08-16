@@ -23,7 +23,12 @@ import { cn } from "@/lib/utils";
 export default function FacultySubjectsPage() {
   const subjects = useApi(() => api.getFacultySubjects(), [], { key: "faculty-subjects" });
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const students = useApi(() => api.getSubjectStudents(selectedId ?? 0), [selectedId], { key: `faculty-students-${selectedId ?? 0}` });
+  const effectiveSubject = subjects.data?.find((s) => s.id === selectedId)?.id ?? subjects.data?.[0]?.id ?? null;
+  const students = useApi(
+    () => (effectiveSubject ? api.getSubjectStudents(effectiveSubject) : Promise.resolve(null)),
+    [effectiveSubject],
+    { key: `faculty-students-${effectiveSubject ?? "none"}` }
+  );
 
   const selected = subjects.data?.find((s) => s.id === selectedId) ?? subjects.data?.[0] ?? null;
 

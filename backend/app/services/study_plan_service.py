@@ -44,11 +44,8 @@ def generate_plan_slots(
             "Provide at least one exam date to generate a plan.", code="NO_EXAM_DATES"
         )
 
-    first_exam = min(exams.values())
     last_exam = max(exams.values())
     end_date = max(today, last_exam)
-    if end_date == today:
-        end_date = today
 
     slot_start_hour, slot_start_minute = PREFERRED_START.get(preferred_time, (16, 0))
 
@@ -64,19 +61,19 @@ def generate_plan_slots(
     while current <= end_date:
         weekday = current.weekday()  # 0=Monday ... 6=Sunday
         if weekday < 6:
-            subjects_for_day = sorted(
-                exams.items(),
+            upcoming = sorted(
+                ((sid, exam_day) for sid, exam_day in exams.items() if exam_day >= current),
                 key=lambda kv: (
                     0 if kv[0] in weak_subjects else 1,
                     kv[1],
                 ),
             )
-            for index in range(available_hours):
-                if not subjects_for_day:
-                    break
-                subject_id, exam_day = subjects_for_day[index % len(subjects_for_day)]
+            if not upcoming:
+                break
+            for index in range(min(available_hours, len(upcoming))):
+                subject_id, exam_day = upcoming[index]
                 subject = subject_map[subject_id]
-                is_revision = (exam_day - current).days <= 1
+                is_revision = 0 <= (exam_day - current).days <= 1
                 start_time, end_time = time_plus(index)
                 topic_index = (current.toordinal() + index) % len(TOPIC_NAMES)
                 slots.append(

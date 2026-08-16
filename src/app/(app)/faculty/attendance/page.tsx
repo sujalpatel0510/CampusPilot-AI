@@ -49,15 +49,18 @@ function StatusBadge({ status }: { status: string }) {
 export default function FacultyAttendancePage() {
   const subjects = useApi(() => api.getFacultySubjects(), [], { key: "faculty-subjects" });
   const [subjectId, setSubjectId] = useState<number | null>(null);
-  const students = useApi(() => api.getSubjectStudents(subjectId ?? 0), [subjectId], { key: `faculty-students-${subjectId ?? 0}` });
+  const effectiveSubject = subjectId ?? subjects.data?.[0]?.id ?? null;
+  const currentSubjectId = effectiveSubject ?? 0;
+  const students = useApi(
+    () => (effectiveSubject ? api.getSubjectStudents(effectiveSubject) : Promise.resolve(null)),
+    [effectiveSubject],
+    { key: `faculty-students-${effectiveSubject ?? "none"}` }
+  );
   const [editing, setEditing] = useState<SubjectStudent | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [total, setTotal] = useState("");
   const [attended, setAttended] = useState("");
   const [saving, setSaving] = useState(false);
-
-  const effectiveSubject = subjectId ?? subjects.data?.[0]?.id ?? null;
-  const currentSubjectId = effectiveSubject ?? 0;
 
   async function openDialog(student: SubjectStudent | null) {
     setEditing(student);
