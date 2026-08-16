@@ -8,7 +8,7 @@ from datetime import date, timedelta
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_student_by_identifier, pagination
 from app.core.database import get_db
@@ -18,6 +18,7 @@ from app.core.security import require_admin, require_faculty_or_admin, require_s
 from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.attendance import Attendance
 from app.models.exam import Exam
+from app.models.faculty import Faculty
 from app.models.notice import Notice
 from app.models.notification import Notification
 from app.models.student import Student
@@ -117,6 +118,7 @@ def _assignment_out(assignment: Assignment, status: Optional[str]) -> dict:
 def _student_exams(db: Session, student: Student) -> List[dict]:
     exams = (
         db.query(Exam)
+        .options(joinedload(Exam.subject))
         .filter(
             Exam.department == student.department,
             Exam.semester == student.semester,
@@ -134,6 +136,7 @@ def _student_assignments(db: Session, student: Student) -> List[dict]:
         return []
     assignments = (
         db.query(Assignment)
+        .options(joinedload(Assignment.subject))
         .filter(Assignment.subject_id.in_(subject_ids))
         .order_by(Assignment.due_date)
         .all()
@@ -158,25 +161,31 @@ def _student_assignments(db: Session, student: Student) -> List[dict]:
 def _student_timetable(db: Session, student: Student) -> List[TimetableDayOut]:
     today = date.today()
     week_start = today - timedelta(days=today.weekday())
+    entries = (
+        db.query(TimetableEntry)
+        .options(
+            joinedload(TimetableEntry.subject),
+            joinedload(TimetableEntry.faculty).joinedload(Faculty.user),
+        )
+        .filter(
+            TimetableEntry.department == student.department,
+            TimetableEntry.semester == student.semester,
+            TimetableEntry.section == student.section,
+        )
+        .order_by(TimetableEntry.start_time)
+        .all()
+    )
+    by_day: dict = {day: [] for day in WEEK_DAYS}
+    for entry in entries:
+        by_day.setdefault(entry.day_of_week, []).append(_timetable_entry_out(entry))
     days: List[TimetableDayOut] = []
     for index, day in enumerate(WEEK_DAYS):
-        entries = (
-            db.query(TimetableEntry)
-            .filter(
-                TimetableEntry.department == student.department,
-                TimetableEntry.semester == student.semester,
-                TimetableEntry.section == student.section,
-                TimetableEntry.day_of_week == day,
-            )
-            .order_by(TimetableEntry.start_time)
-            .all()
-        )
         day_date = week_start + timedelta(days=index)
         days.append(
             TimetableDayOut(
                 day=day,
                 date=day_date.isoformat(),
-                entries=[_timetable_entry_out(e) for e in entries],
+                entries=by_day.get(day, []),
             )
         )
     return days
@@ -208,9 +217,9 @@ def my_dashboard(
     db: Session = Depends(get_db),
 ):
     student = get_student_by_user(db, user)
-    check_student_alerts(db, student, user)
 
     attendance = attendance_summary_for_student(db, student.id)
+    check_student_alerts(db, student, user, attendance_summary=attendance)
     assignments = _student_assignments(db, student)
     exams = _student_exams(db, student)
     timetable = _student_timetable(db, student)

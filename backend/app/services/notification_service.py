@@ -10,6 +10,7 @@ Notifications are created for:
 """
 
 from datetime import date, datetime, timedelta
+from typing import Optional
 
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -49,7 +50,23 @@ def create_notification(
     return notification
 
 
-def _notify(user_id: int, ntype: str, title: str, message: str, db: Session) -> None:
+def _notify_if_new(user_id: int, ntype: str, title: str, message: str, db: Session) -> None:
+    """Create a notification unless an identical one already exists.
+
+    Alert checks run on every dashboard load; this keeps the table from
+    growing with duplicate rows on each visit.
+    """
+    exists = (
+        db.query(Notification.id)
+        .filter(
+            Notification.user_id == user_id,
+            Notification.notification_type == ntype,
+            Notification.title == title,
+        )
+        .first()
+    )
+    if exists:
+        return
     create_notification(db, user_id, title, message, ntype)
 
 
@@ -66,12 +83,12 @@ def check_assignment_notifications(db: Session, student: Student, user: User) ->
     for assignment in assignments:
         days_left = (assignment.due_date - today).days
         if 0 <= days_left <= ASSIGNMENT_DUE_SOON_DAYS:
-            _notify(
+            _notify_if_new(
                 user.id, "assignment", "Assignment due soon",
                 f"'{assignment.title}' is due in {days_left} day(s).", db,
             )
         elif days_left < 0:
-            _notify(
+            _notify_if_new(
                 user.id, "assignment", "Assignment overdue",
                 f"'{assignment.title}' was due on {assignment.due_date}.", db,
             )
@@ -92,35 +109,40 @@ def check_exam_notifications(db: Session, student: Student, user: User) -> None:
     for exam in exams:
         days_left = (exam.exam_date - today).days
         if 0 <= days_left <= EXAM_APPROACHING_DAYS:
-            _notify(
+            _notify_if_new(
                 user.id, "exam", "Exam approaching",
                 f"{exam.exam_type} for {exam.subject.code} in {days_left} day(s) at {exam.room}.",
                 db,
             )
 
 
-def check_attendance_notifications(db: Session, student: Student, user: User) -> None:
-    summary = attendance_summary_for_student(db, student.id)
+def check_attendance_notifications(
+    db: Session, student: Student, user: User, summary: Optional[dict] = None
+) -> None:
+    if summary is None:
+        summary = attendance_summary_for_student(db, student.id)
     overall = summary.get("overall")
     if overall and overall["percentage"] < settings.ATTENDANCE_THRESHOLD:
-        _notify(
+        _notify_if_new(
             user.id, "attendance", "Attendance below threshold",
             f"Your overall attendance is {overall['percentage']:.1f}% (required {settings.ATTENDANCE_THRESHOLD:g}%).",
             db,
         )
 
 
-def check_student_alerts(db: Session, student: Student, user: User) -> None:
+def check_student_alerts(
+    db: Session, student: Student, user: User, attendance_summary: Optional[dict] = None
+) -> None:
     """Create notifications for a student for all academic triggers."""
     check_assignment_notifications(db, student, user)
     check_exam_notifications(db, student, user)
-    check_attendance_notifications(db, student, user)
+    check_attendance_notifications(db, student, user, summary=attendance_summary)
 
 
 def notify_notice_created(db: Session, notice: Notice) -> None:
     students = db.query(Student).all()
     for student in students:
-        _notify(
+        _notify_if_new(
             student.user_id, "notice", "New notice",
             notice.title, db,
         )
@@ -134,7 +156,7 @@ def notify_new_assignment(db: Session, assignment: Assignment) -> None:
         .all()
     )
     for student in students:
-        _notify(
+        _notify_if_new(
             student.user_id, "assignment", "New assignment",
             f"'{assignment.title}' assigned for {assignment.subject.code}, due {assignment.due_date}.",
             db,
@@ -152,7 +174,7 @@ def notify_exam_scheduled(db: Session, exam: Exam) -> None:
         .all()
     )
     for student in students:
-        _notify(
+        _notify_if_new(
             student.user_id, "exam", "Exam scheduled",
             f"{exam.exam_type} for {exam.subject.code} on {exam.exam_date} at {exam.room}.",
             db,
@@ -162,7 +184,7 @@ def notify_exam_scheduled(db: Session, exam: Exam) -> None:
 def notify_material_created(db: Session, material: StudyMaterial) -> None:
     students = db.query(Student).all()
     for student in students:
-        _notify(
+        _notify_if_new(
             student.user_id, "material", "New study material",
             f"'{material.title}' was added to {material.subject.name}.", db,
         )

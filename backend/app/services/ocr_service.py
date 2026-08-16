@@ -14,9 +14,6 @@ import io
 import re
 from typing import List, Tuple
 
-from PIL import Image
-from pytesseract import image_to_string, pytesseract
-
 from app.core.config import settings
 from app.core.logging import get_logger
 
@@ -26,6 +23,8 @@ ALLOWED_IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".webp")
 
 
 def _configure_tesseract() -> None:
+    from pytesseract import pytesseract
+
     if settings.TESSERACT_CMD:
         pytesseract.tesseract_cmd = settings.TESSERACT_CMD
 
@@ -56,7 +55,9 @@ def _extract_text_layer(pdf: "fitz.Document") -> str:
     return "\n".join(parts)
 
 
-def _ocr_images(images: List[Image.Image], lang: str = "eng") -> str:
+def _ocr_images(images: List["Image.Image"], lang: str = "eng") -> str:
+    from pytesseract import image_to_string
+
     parts: List[str] = []
     for image in images:
         try:
@@ -79,6 +80,8 @@ def extract_text_from_pdf(data: bytes) -> Tuple[str, bool, str]:
             if _has_text_layer(pdf):
                 text = _extract_text_layer(pdf)
                 return _clean_text(text), True, ""
+            from PIL import Image
+
             images = []
             for page in pdf:
                 pix = page.get_pixmap(dpi=200)
@@ -96,6 +99,9 @@ def extract_text_from_pdf(data: bytes) -> Tuple[str, bool, str]:
 
 def extract_text_from_image(data: bytes, extension: str) -> Tuple[str, bool, str]:
     """Extract text from an image file via Tesseract."""
+    from PIL import Image
+    from pytesseract import image_to_string
+
     _configure_tesseract()
     try:
         image = Image.open(io.BytesIO(data))
