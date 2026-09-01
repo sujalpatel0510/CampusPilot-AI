@@ -42,9 +42,10 @@ export function DayView({
     const time = `${String(hour).padStart(2, "0")}:00`;
     const entry = dayEntries.find((e) => e.startTime.startsWith(time));
     if (!entry) return { hour, entry: null, span: 1 };
-    const start = toHour(entry.startTime);
-    const end = toHour(entry.endTime);
-    const span = Math.max(1, Math.round(end - start + (toHour(entry.endTime.slice(3)) === 0 ? 0 : 0) + ((Number(entry.endTime.split(":")[1] ?? 0) > 0 ? 1 : 0))));
+    const startH = toHour(entry.startTime);
+    const endH = toHour(entry.endTime);
+    const mins = Number(entry.endTime.split(":")[1] ?? 0);
+    const span = Math.max(1, endH - startH + (mins > 0 ? 1 : 0));
     for (let h = hour + 1; h < hour + span; h++) covered.add(h);
     return { hour, entry, span };
   });

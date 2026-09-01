@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarDays, Clock } from "lucide-react";
+import { CalendarDays, CalendarRange, Clock } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { ErrorState } from "@/components/shared/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
-import { WeekView, TodayView } from "@/components/timetable/views";
+import { WeekView, TodayView, DayView } from "@/components/timetable/views";
 import { useApi } from "@/hooks/use-api";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -13,7 +13,11 @@ import { DAY_LABELS } from "@/lib/utils";
 
 export default function TimetablePage() {
   const { data, loading, error, refetch } = useApi(() => api.getTimetable(), [], { key: "timetable" });
-  const [view, setView] = useState<"week" | "today">("week");
+  const [view, setView] = useState<"week" | "day" | "today">("week");
+  const [daySel, setDaySel] = useState<number>(() => {
+    const d = new Date().getDay();
+    return d === 0 ? 1 : d;
+  });
 
   if (error) {
     return (
@@ -35,7 +39,9 @@ export default function TimetablePage() {
         description={
           view === "today"
             ? `${DAY_LABELS[today]}, ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long" })}`
-            : "Weekly class schedule"
+            : view === "day"
+              ? `${DAY_LABELS[daySel]} full day schedule`
+              : "Weekly class schedule"
         }
         actions={
           <div className="inline-flex items-center gap-2 rounded-md bg-muted p-1">
@@ -48,7 +54,18 @@ export default function TimetablePage() {
               )}
             >
               <CalendarDays className="h-3.5 w-3.5" />
-              Week view
+              Week
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("day")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded px-3 py-1 text-sm font-medium transition-colors",
+                view === "day" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <CalendarRange className="h-3.5 w-3.5" />
+              Full day
             </button>
             <button
               type="button"
@@ -70,6 +87,8 @@ export default function TimetablePage() {
       ) : data ? (
         view === "week" ? (
           <WeekView entries={data} />
+        ) : view === "day" ? (
+          <DayView entries={data} day={daySel} onSelectDay={setDaySel} />
         ) : (
           <TodayView entries={data.filter((e) => e.day === today)} />
         )
