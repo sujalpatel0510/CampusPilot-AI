@@ -37,7 +37,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="lg:pl-64">
         <Header />
         <main className="mx-auto max-w-6xl p-4 sm:p-6 lg:p-8">
-          <div key={pathname} className="animate-fade-up">
+          <div className="animate-fade-in">
             {children}
           </div>
         </main>

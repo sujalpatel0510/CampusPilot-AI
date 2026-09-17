@@ -50,12 +50,19 @@ def create_notification(
     return notification
 
 
-def _notify_if_new(user_id: int, ntype: str, title: str, message: str, db: Session) -> None:
+def _notify_if_new(user_id: int, ntype: str, title: str, message: str, db: Session, existing_titles: Optional[set] = None) -> None:
     """Create a notification unless an identical one already exists.
 
     Alert checks run on every dashboard load; this keeps the table from
     growing with duplicate rows on each visit.
     """
+    if existing_titles is not None:
+        if title in existing_titles:
+            return
+        create_notification(db, user_id, title, message, ntype)
+        existing_titles.add(title)
+        return
+
     exists = (
         db.query(Notification.id)
         .filter(
@@ -70,7 +77,7 @@ def _notify_if_new(user_id: int, ntype: str, title: str, message: str, db: Sessi
     create_notification(db, user_id, title, message, ntype)
 
 
-def check_assignment_notifications(db: Session, student: Student, user: User) -> None:
+def check_assignment_notifications(db: Session, student: Student, user: User, existing_titles: Optional[set] = None) -> None:
     today = date.today()
     subject_ids = [ss.subject_id for ss in student.subjects]
     if not subject_ids:
@@ -85,16 +92,16 @@ def check_assignment_notifications(db: Session, student: Student, user: User) ->
         if 0 <= days_left <= ASSIGNMENT_DUE_SOON_DAYS:
             _notify_if_new(
                 user.id, "assignment", "Assignment due soon",
-                f"'{assignment.title}' is due in {days_left} day(s).", db,
+                f"'{assignment.title}' is due in {days_left} day(s).", db, existing_titles
             )
         elif days_left < 0:
             _notify_if_new(
                 user.id, "assignment", "Assignment overdue",
-                f"'{assignment.title}' was due on {assignment.due_date}.", db,
+                f"'{assignment.title}' was due on {assignment.due_date}.", db, existing_titles
             )
 
 
-def check_exam_notifications(db: Session, student: Student, user: User) -> None:
+def check_exam_notifications(db: Session, student: Student, user: User, existing_titles: Optional[set] = None) -> None:
     today = date.today()
     exams = (
         db.query(Exam)
@@ -112,12 +119,12 @@ def check_exam_notifications(db: Session, student: Student, user: User) -> None:
             _notify_if_new(
                 user.id, "exam", "Exam approaching",
                 f"{exam.exam_type} for {exam.subject.code} in {days_left} day(s) at {exam.room}.",
-                db,
+                db, existing_titles
             )
 
 
 def check_attendance_notifications(
-    db: Session, student: Student, user: User, summary: Optional[dict] = None
+    db: Session, student: Student, user: User, summary: Optional[dict] = None, existing_titles: Optional[set] = None
 ) -> None:
     if summary is None:
         summary = attendance_summary_for_student(db, student.id)
@@ -126,17 +133,20 @@ def check_attendance_notifications(
         _notify_if_new(
             user.id, "attendance", "Attendance below threshold",
             f"Your overall attendance is {overall['percentage']:.1f}% (required {settings.ATTENDANCE_THRESHOLD:g}%).",
-            db,
+            db, existing_titles
         )
 
 
 def check_student_alerts(
     db: Session, student: Student, user: User, attendance_summary: Optional[dict] = None
 ) -> None:
-    """Create notifications for a student for all academic triggers."""
-    check_assignment_notifications(db, student, user)
-    check_exam_notifications(db, student, user)
-    check_attendance_notifications(db, student, user, summary=attendance_summary)
+    """Create notifications for a student for all academic triggers efficiently."""
+    existing_titles = set(
+        t for (t,) in db.query(Notification.title).filter(Notification.user_id == user.id).all()
+    )
+    check_assignment_notifications(db, student, user, existing_titles)
+    check_exam_notifications(db, student, user, existing_titles)
+    check_attendance_notifications(db, student, user, summary=attendance_summary, existing_titles=existing_titles)
 
 
 def notify_notice_created(db: Session, notice: Notice) -> None:
