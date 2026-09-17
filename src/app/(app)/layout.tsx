@@ -17,7 +17,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       router.replace("/login");
       return;
     }
-    const isStudent = user.role === "student";
+    const role = (user.role ?? "student").toLowerCase();
+    const isStudent = role === "student";
     const onFacultyPath = pathname.startsWith("/faculty");
     const onSharedPath = pathname === "/settings";
     if (isStudent && onFacultyPath) {

@@ -21,11 +21,11 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth";
 import type { Role } from "@/types";
 
-export function Logo({ compact = false }: { compact?: boolean }) {
+export function Logo({ compact = false, onClick }: { compact?: boolean; onClick?: () => void }) {
   const { user } = useAuth();
   const href = user?.role === "student" ? "/dashboard" : "/faculty/dashboard";
   return (
-    <Link href={href} className="flex items-center gap-2">
+    <Link href={href} onClick={onClick} className="flex items-center gap-2">
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 shadow-sm">
         <Sparkles className="h-4 w-4 text-white" />
       </span>
@@ -105,7 +105,7 @@ const FACULTY_NAV: { label: string; items: NavItem[] }[] = [
   },
 ];
 
-export function Sidebar({ className }: { className?: string }) {
+export function Sidebar({ className, onItemClick }: { className?: string; onItemClick?: () => void }) {
   const pathname = usePathname();
   const { user } = useAuth();
   const role: Role = user?.role ?? "student";
@@ -114,7 +114,7 @@ export function Sidebar({ className }: { className?: string }) {
   return (
     <div className={cn("flex h-full flex-col gap-6 overflow-y-auto px-3 py-5 scrollbar-thin", className)}>
       <div className="px-2">
-        <Logo />
+        <Logo onClick={onItemClick} />
       </div>
       <nav className="flex-1 space-y-6">
         {navGroups.map((group) => (
@@ -130,6 +130,7 @@ export function Sidebar({ className }: { className?: string }) {
                   <li key={item.href}>
                     <Link
                       href={item.href}
+                      onClick={onItemClick}
                       className={cn(
                         "group flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                         active

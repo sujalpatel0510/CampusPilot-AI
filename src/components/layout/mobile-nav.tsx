@@ -36,7 +36,7 @@ export function MobileNav({ open, onOpenChange }: MobileNavProps) {
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <Sidebar className="pt-0" />
+            <Sidebar className="pt-0" onItemClick={() => onOpenChange(false)} />
           </div>
         </div>
       ) : null}
