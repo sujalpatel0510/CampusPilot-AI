@@ -3,9 +3,11 @@
 import { Bot } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import { FEATURES } from "@/lib/feature-flags";
 
 export function FloatingAssistant() {
   const { user } = useAuth();
+  if (!FEATURES.AI_ASSISTANT) return null;
   if (user && user.role !== "student") return null;
   return (
     <Link

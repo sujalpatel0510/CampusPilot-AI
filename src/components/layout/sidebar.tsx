@@ -15,10 +15,14 @@ import {
   Settings,
   Sparkles,
   Users,
+  LogOut,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
+import { FEATURES } from "@/lib/feature-flags";
 import type { Role } from "@/types";
 
 export function Logo({ compact = false, onClick }: { compact?: boolean; onClick?: () => void }) {
@@ -50,7 +54,9 @@ const STUDENT_NAV: { label: string; items: NavItem[] }[] = [
     label: "Main",
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/assistant", label: "AI Assistant", icon: Bot, badge: "AI" },
+      ...(FEATURES.AI_ASSISTANT
+        ? [{ href: "/assistant", label: "AI Assistant", icon: Bot, badge: "AI" }]
+        : []),
     ],
   },
   {
@@ -62,15 +68,27 @@ const STUDENT_NAV: { label: string; items: NavItem[] }[] = [
       { href: "/exams", label: "Exams", icon: CalendarClock },
     ],
   },
-  {
-    label: "Resources",
-    items: [
-      { href: "/notices", label: "Notices", icon: Megaphone },
-      { href: "/study-materials", label: "Study Materials", icon: BookOpen },
-      { href: "/study-planner", label: "Study Planner", icon: NotebookPen },
-      { href: "/notifications", label: "Notifications", icon: FileText },
-    ],
-  },
+  ...(FEATURES.RESOURCES || FEATURES.STUDY_PLANNER
+    ? [
+        {
+          label: "Resources",
+          items: [
+            ...(FEATURES.RESOURCES
+              ? [
+                  { href: "/notices", label: "Notices", icon: Megaphone },
+                  { href: "/study-materials", label: "Study Materials", icon: BookOpen },
+                ]
+              : []),
+            ...(FEATURES.STUDY_PLANNER
+              ? [{ href: "/study-planner", label: "Study Planner", icon: NotebookPen, badge: "AI" }]
+              : []),
+            ...(FEATURES.RESOURCES
+              ? [{ href: "/notifications", label: "Notifications", icon: FileText }]
+              : []),
+          ],
+        },
+      ]
+    : []),
   {
     label: "Account",
     items: [{ href: "/settings", label: "Settings", icon: Settings }],
@@ -92,13 +110,17 @@ const FACULTY_NAV: { label: string; items: NavItem[] }[] = [
       { href: "/faculty/exams", label: "Exams", icon: CalendarClock },
     ],
   },
-  {
-    label: "Resources",
-    items: [
-      { href: "/faculty/notices", label: "Notices", icon: Megaphone },
-      { href: "/faculty/materials", label: "Study Materials", icon: BookOpen },
-    ],
-  },
+  ...(FEATURES.RESOURCES
+    ? [
+        {
+          label: "Resources",
+          items: [
+            { href: "/faculty/notices", label: "Notices", icon: Megaphone },
+            { href: "/faculty/materials", label: "Study Materials", icon: BookOpen },
+          ],
+        },
+      ]
+    : []),
   {
     label: "Account",
     items: [{ href: "/settings", label: "Settings", icon: Settings }],
@@ -107,7 +129,7 @@ const FACULTY_NAV: { label: string; items: NavItem[] }[] = [
 
 export function Sidebar({ className, onItemClick }: { className?: string; onItemClick?: () => void }) {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const role: Role = user?.role ?? "student";
   const navGroups = role === "student" ? STUDENT_NAV : FACULTY_NAV;
 
@@ -153,7 +175,7 @@ export function Sidebar({ className, onItemClick }: { className?: string; onItem
           </div>
         ))}
       </nav>
-      {role === "student" ? (
+      {role === "student" && FEATURES.AI_ASSISTANT ? (
         <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
           <p className="text-xs font-semibold text-primary">Need help?</p>
           <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
@@ -167,14 +189,58 @@ export function Sidebar({ className, onItemClick }: { className?: string; onItem
             Open AI Assistant
           </Link>
         </div>
-      ) : (
+      ) : role !== "student" ? (
         <div className="rounded-lg border border-border/60 bg-muted/40 p-3">
           <p className="text-xs font-semibold text-foreground">Faculty workspace</p>
           <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
             Manage your subjects, attendance, exams and study resources.
           </p>
         </div>
-      )}
+      ) : null}
+
+      {user ? (
+        <div className="mt-auto pt-3 border-t border-border/60">
+          <div className="flex items-center justify-between rounded-lg p-2 bg-muted/30 hover:bg-muted/60 transition-colors">
+            <Link
+              href="/settings"
+              onClick={onItemClick}
+              className="flex items-center gap-2.5 min-w-0 flex-1 group"
+            >
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 text-white font-semibold text-xs shadow-sm">
+                {user.full_name
+                  ? user.full_name
+                      .split(" ")
+                      .map((w) => w[0])
+                      .slice(0, 2)
+                      .join("")
+                      .toUpperCase()
+                  : "U"}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-semibold text-foreground group-hover:text-primary transition-colors">
+                  {user.full_name || user.email}
+                </p>
+                <p className="truncate text-[10px] text-muted-foreground capitalize">
+                  {user.role}
+                </p>
+              </div>
+            </Link>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => {
+                logout();
+                toast.success("Logged out successfully");
+              }}
+              title="Log out"
+              aria-label="Log out"
+              className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive shrink-0"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

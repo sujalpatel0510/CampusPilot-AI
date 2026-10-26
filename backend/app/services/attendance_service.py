@@ -12,7 +12,9 @@ Status thresholds (configurable, default 75%):
 `can_miss` answers "how many classes can I miss and stay above threshold".
 """
 
-from typing import Dict, List, Optional
+from datetime import datetime, timedelta
+import random
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
 
@@ -124,3 +126,4 @@ def attendance_for_student_subject(db: Session, student: Student, subject: Subje
         )
         .first()
     )
+

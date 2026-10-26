@@ -3,6 +3,7 @@
 import { ArrowRight, Bot } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
+import { FEATURES } from "@/lib/feature-flags";
 
 const PROMPTS = [
   "When is my next exam?",
@@ -12,6 +13,7 @@ const PROMPTS = [
 
 export function AiWidget() {
   const router = useRouter();
+  if (!FEATURES.AI_ASSISTANT) return null;
 
   function ask(prompt?: string) {
     if (prompt) sessionStorage.setItem("cp-prompt", prompt);

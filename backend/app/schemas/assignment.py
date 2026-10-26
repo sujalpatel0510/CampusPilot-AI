@@ -43,3 +43,8 @@ class AssignmentOut(ORMModel):
 class AssignmentSubmissionCreate(BaseModel):
     file_url: Optional[str] = Field(default=None, max_length=500)
     status: str = "submitted"
+
+
+class SubmissionStatusUpdate(BaseModel):
+    status: str = Field(min_length=1, max_length=20)
+

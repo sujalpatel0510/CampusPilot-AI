@@ -7,7 +7,9 @@ import { cn } from "@/lib/utils";
 function slotMinutes(slot: { startTime: string; endTime: string }): number {
   const [sh, sm] = slot.startTime.split(":").map(Number);
   const [eh, em] = slot.endTime.split(":").map(Number);
-  return eh * 60 + em - (sh * 60 + sm);
+  let diff = eh * 60 + em - (sh * 60 + sm);
+  if (diff <= 0) diff += 24 * 60;
+  return diff;
 }
 
 export function PlanStats({ plan }: { plan: StudyPlan }) {

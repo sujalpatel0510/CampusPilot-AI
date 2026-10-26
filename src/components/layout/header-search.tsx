@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarClock, ClipboardList, FileText, GraduationCap, Search, Users } from "lucide-react";
+import { Bot, CalendarClock, ClipboardList, FileText, GraduationCap, NotebookPen, Search, Users } from "lucide-react";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { FEATURES } from "@/lib/feature-flags";
 
 interface HeaderSearchProps {
   open: boolean;
@@ -17,7 +18,9 @@ type ResultGroup =
   | { type: "assignment"; title: string; subtitle: string; href: string; icon: React.ElementType }
   | { type: "exam"; title: string; subtitle: string; href: string; icon: React.ElementType }
   | { type: "notice"; title: string; subtitle: string; href: string; icon: React.ElementType }
-  | { type: "subject"; title: string; subtitle: string; href: string; icon: React.ElementType };
+  | { type: "subject"; title: string; subtitle: string; href: string; icon: React.ElementType }
+  | { type: "assistant"; title: string; subtitle: string; href: string; icon: React.ElementType }
+  | { type: "planner"; title: string; subtitle: string; href: string; icon: React.ElementType };
 
 export function HeaderSearch({ open, onOpenChange }: HeaderSearchProps) {
   const router = useRouter();
@@ -87,16 +90,18 @@ export function HeaderSearch({ open, onOpenChange }: HeaderSearchProps) {
               href: "/exams",
               icon: CalendarClock,
             })),
-          ...notices
-            .filter((n) => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q))
-            .slice(0, 3)
-            .map((n) => ({
-              type: "notice" as const,
-              title: n.title,
-              subtitle: `Notice · ${formatDate(n.date)}`,
-              href: "/notices",
-              icon: FileText,
-            })),
+          ...(FEATURES.RESOURCES
+            ? notices
+                .filter((n) => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q))
+                .slice(0, 3)
+                .map((n) => ({
+                  type: "notice" as const,
+                  title: n.title,
+                  subtitle: `Notice · ${formatDate(n.date)}`,
+                  href: "/notices",
+                  icon: FileText,
+                }))
+            : []),
           ...subjects
             .filter((s) => s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q))
             .slice(0, 3)
@@ -107,6 +112,28 @@ export function HeaderSearch({ open, onOpenChange }: HeaderSearchProps) {
               href: "/timetable",
               icon: GraduationCap,
             })),
+          ...(FEATURES.AI_ASSISTANT && (q.includes("ai") || q.includes("assist") || q.includes("ask") || q.includes("chat"))
+            ? [
+                {
+                  type: "assistant" as const,
+                  title: "CampusPilot AI Assistant",
+                  subtitle: "Ask about attendance, timetable, or exams",
+                  href: "/assistant",
+                  icon: Bot,
+                },
+              ]
+            : []),
+          ...(FEATURES.STUDY_PLANNER && (q.includes("study") || q.includes("plan") || q.includes("revis"))
+            ? [
+                {
+                  type: "planner" as const,
+                  title: "AI Study Planner",
+                  subtitle: "Generate day-by-day revision schedule",
+                  href: "/study-planner",
+                  icon: NotebookPen,
+                },
+              ]
+            : []),
         ];
         setResults(groups);
       } catch {

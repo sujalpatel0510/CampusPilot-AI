@@ -149,3 +149,69 @@ def test_attendance_invalid_counts_rejected(client, student, admin):
     )
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "ATTENDED_EXCEEDS_TOTAL"
+
+
+def test_faculty_attendance_export_and_bulk_mark(client, student, faculty):
+    from datetime import time
+    from app.models.student import Student, StudentSubject
+    from app.models.subject import Subject
+    from app.models.timetable import TimetableEntry
+    from app.models.attendance import Attendance
+    from app.models.faculty import Faculty
+    from app.core.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        stu = db.query(Student).filter(Student.student_id == "STU001").first()
+        fac = db.query(Faculty).filter(Faculty.employee_id == "F001").first()
+        subject = Subject(name="Software Engineering", code="SE401", department="CSE", semester=4, credits=4)
+        db.add(subject)
+        db.flush()
+
+        db.add(StudentSubject(student_id=stu.id, subject_id=subject.id))
+        db.add(
+            TimetableEntry(
+                faculty_id=fac.id,
+                subject_id=subject.id,
+                department="CSE",
+                semester=4,
+                section="A",
+                day_of_week="Monday",
+                start_time=time(9, 0),
+                end_time=time(10, 0),
+                room="LH-1",
+            )
+        )
+        db.add(Attendance(student_id=stu.id, subject_id=subject.id, total_classes=10, attended_classes=8))
+        db.commit()
+        subj_id = subject.id
+    finally:
+        db.close()
+
+    # 1. Test attendance Excel (.xlsx) export
+    res = client.get(
+        f"/api/v1/faculty/me/subjects/{subj_id}/attendance/export",
+        headers=auth(faculty["token"]),
+    )
+    assert res.status_code == 200
+    assert "spreadsheetml.sheet" in res.headers["content-type"]
+    assert len(res.content) > 1000  # valid binary workbook
+
+    # 2. Test attendance CSV format
+    csv_res = client.get(
+        f"/api/v1/faculty/me/subjects/{subj_id}/attendance/export?format=csv",
+        headers=auth(faculty["token"]),
+    )
+    assert csv_res.status_code == 200
+    assert "text/csv" in csv_res.headers["content-type"]
+    assert "SE401" in csv_res.text
+
+    # 3. Test bulk mark attendance
+    bulk_res = client.post(
+        f"/api/v1/faculty/me/subjects/{subj_id}/attendance/bulk-mark",
+        json={"all_present": True},
+        headers=auth(faculty["token"]),
+    )
+    assert bulk_res.status_code == 200
+    assert "Attendance recorded" in bulk_res.json()["message"]
+

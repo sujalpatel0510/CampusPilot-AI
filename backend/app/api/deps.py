@@ -51,7 +51,7 @@ def ensure_subject_access(subject_id: int, user: User, db: Session) -> Subject:
             .filter(TimetableEntry.subject_id == subject_id, TimetableEntry.faculty_id == faculty.id)
             .first()
         )
-        if teaches:
+        if teaches or (faculty.department and subject.department == faculty.department):
             return subject
     raise ForbiddenError("You can only manage subjects you are assigned to.", code="SUBJECT_ACCESS_DENIED")
 

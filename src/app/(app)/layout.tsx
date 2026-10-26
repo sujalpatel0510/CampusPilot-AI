@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { AppShell } from "@/components/layout/app-shell";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FEATURES } from "@/lib/feature-flags";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -23,8 +24,32 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const onSharedPath = pathname === "/settings";
     if (isStudent && onFacultyPath) {
       router.replace("/dashboard");
+      return;
     } else if (!isStudent && !onFacultyPath && !onSharedPath) {
       router.replace("/faculty/dashboard");
+      return;
+    }
+
+    if (!FEATURES.AI_ASSISTANT && pathname === "/assistant") {
+      router.replace(isStudent ? "/dashboard" : "/faculty/dashboard");
+      return;
+    }
+
+    if (!FEATURES.STUDY_PLANNER && pathname.startsWith("/study-planner")) {
+      router.replace(isStudent ? "/dashboard" : "/faculty/dashboard");
+      return;
+    }
+
+    const isOtherResourcePath =
+      pathname.startsWith("/notices") ||
+      pathname.startsWith("/study-materials") ||
+      pathname.startsWith("/notifications") ||
+      pathname.startsWith("/faculty/notices") ||
+      pathname.startsWith("/faculty/materials");
+
+    if (!FEATURES.RESOURCES && isOtherResourcePath) {
+      router.replace(isStudent ? "/dashboard" : "/faculty/dashboard");
+      return;
     }
   }, [loading, user, pathname, router]);
 

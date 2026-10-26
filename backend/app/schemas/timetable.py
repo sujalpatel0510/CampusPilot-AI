@@ -10,7 +10,7 @@ WEEK_DAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
 
 class TimetableBase(BaseModel):
     subject_id: int
-    faculty_id: int
+    faculty_id: Optional[int] = None
     department: str = Field(min_length=2, max_length=150)
     semester: int = Field(ge=1, le=12)
     section: str = Field(min_length=1, max_length=10)
@@ -51,6 +51,7 @@ class TimetableOut(ORMModel):
     subject_code: str
     subject_name: str
     faculty_name: str
+    class_type: Optional[str] = "lecture"
 
 
 class TimetableDayOut(BaseModel):

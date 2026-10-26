@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { FileUpload } from "@/components/ui/file-upload";
 import {
   Dialog,
   DialogContent,
@@ -206,11 +207,20 @@ export default function FacultyMaterialsPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="mt-file">File</Label>
-              <Input
+              <Label htmlFor="mt-file">Resource Document / File</Label>
+              <FileUpload
                 id="mt-file"
-                type="file"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                value={file}
+                onChange={(newFile) => {
+                  setFile(newFile);
+                  if (newFile && !title.trim()) {
+                    const cleanName = newFile.name.replace(/\.[^/.]+$/, "");
+                    setTitle(cleanName);
+                  }
+                }}
+                accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip,.txt"
+                helperText="PDF, PPT, DOC, XLS, ZIP or Code (up to 15MB)"
+                maxSizeMB={15}
               />
             </div>
             <div className="space-y-1.5">

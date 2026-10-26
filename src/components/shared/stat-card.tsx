@@ -12,7 +12,7 @@ interface StatCardProps {
 
 export function StatCard({ title, value, icon: Icon, iconClassName, footer, className }: StatCardProps) {
   return (
-    <Card className={cn("overflow-hidden", className)}>
+    <Card className={cn("overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm hover:border-primary/30", className)}>
       <CardContent className="p-5">
         <div className="flex items-start justify-between">
           <div className="min-w-0">

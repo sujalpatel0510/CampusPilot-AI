@@ -57,16 +57,60 @@ SUBJECTS = [
     ("Software Engineering", "CS304", "CSE", 3, 3),
     ("Theory of Computation", "CS305", "CSE", 3, 3),
     ("Digital Logic Design", "EC301", "ECE", 3, 4),
+    # Laboratory practical courses
+    ("Operating Systems Lab", "CS301L", "CSE", 3, 2),
+    ("Database Systems Lab", "CS302L", "CSE", 3, 2),
+    ("Computer Networks Lab", "CS303L", "CSE", 3, 2),
+    ("Software Engineering & Project Lab", "CS304L", "CSE", 3, 2),
 ]
 
 # day -> list of (start_hour, start_min, end_hour, end_min, subject_code, faculty_index, room)
 TIMETABLE = {
-    "Monday": [(9, 0, 10, 0, "CS301", 0, "A-101"), (11, 0, 12, 0, "CS302", 1, "A-102")],
-    "Tuesday": [(9, 0, 10, 0, "CS303", 0, "A-103"), (10, 0, 11, 0, "CS304", 2, "A-104")],
-    "Wednesday": [(9, 0, 10, 0, "CS305", 1, "A-101"), (11, 0, 12, 0, "CS301", 0, "A-102")],
-    "Thursday": [(9, 0, 10, 0, "CS302", 1, "A-103"), (10, 0, 11, 0, "CS303", 0, "A-104")],
-    "Friday": [(9, 0, 10, 0, "CS304", 2, "A-101"), (11, 0, 12, 0, "CS305", 1, "A-102")],
-    "Saturday": [(9, 0, 10, 0, "CS301", 0, "A-103")],
+    "Monday": [
+        (9, 0, 10, 0, "CS301", 0, "A-101"),
+        (10, 0, 11, 0, "CS302", 1, "A-102"),
+        (11, 0, 12, 0, "CS303", 0, "A-103"),
+        (12, 0, 13, 0, "CS304", 2, "A-104"),
+        (14, 0, 16, 0, "CS301L", 0, "OS Lab - 302"),
+        (16, 0, 17, 0, "CS305", 1, "A-101"),
+    ],
+    "Tuesday": [
+        (9, 0, 10, 0, "CS303", 0, "A-103"),
+        (10, 0, 11, 0, "CS304", 2, "A-104"),
+        (11, 0, 12, 0, "CS305", 1, "A-101"),
+        (12, 0, 13, 0, "CS301", 0, "A-102"),
+        (14, 0, 16, 0, "CS302L", 1, "Database Lab - 201"),
+        (16, 0, 17, 0, "CS302", 1, "A-102"),
+    ],
+    "Wednesday": [
+        (9, 0, 10, 0, "CS305", 1, "A-101"),
+        (10, 0, 11, 0, "CS301", 0, "A-102"),
+        (11, 0, 12, 0, "CS302", 1, "A-103"),
+        (12, 0, 13, 0, "CS303", 0, "A-104"),
+        (14, 0, 16, 0, "CS303L", 0, "Networks Lab - 104"),
+        (16, 0, 17, 0, "CS304", 2, "A-104"),
+    ],
+    "Thursday": [
+        (9, 0, 10, 0, "CS302", 1, "A-103"),
+        (10, 0, 11, 0, "CS303", 0, "A-104"),
+        (11, 0, 12, 0, "CS304", 2, "A-101"),
+        (12, 0, 13, 0, "CS305", 1, "A-102"),
+        (14, 0, 16, 0, "CS304L", 2, "Software Studio - 305"),
+        (16, 0, 17, 0, "CS301", 0, "A-101"),
+    ],
+    "Friday": [
+        (9, 0, 10, 0, "CS304", 2, "A-101"),
+        (10, 0, 11, 0, "CS305", 1, "A-102"),
+        (11, 0, 12, 0, "CS301", 0, "A-103"),
+        (12, 0, 13, 0, "CS302", 1, "A-104"),
+        (14, 0, 16, 0, "CS301L", 0, "OS Lab - 302"),
+        (16, 0, 17, 0, "CS303", 0, "A-103"),
+    ],
+    "Saturday": [
+        (9, 0, 10, 0, "CS301", 0, "A-103"),
+        (10, 0, 11, 0, "CS302", 1, "A-101"),
+        (11, 0, 13, 0, "CS304L", 2, "Software Studio - 305"),
+    ],
 }
 
 
@@ -176,7 +220,8 @@ def seed(db: Session) -> None:
                 db.query(TimetableEntry)
                 .filter(
                     TimetableEntry.day_of_week == day,
-                    TimetableEntry.subject_id == subject.id,
+                    TimetableEntry.start_time == time(sh, sm),
+                    TimetableEntry.section == "A",
                 )
                 .first()
             )
@@ -194,6 +239,11 @@ def seed(db: Session) -> None:
                         room=room,
                     )
                 )
+            else:
+                entry.subject_id = subject.id
+                entry.faculty_id = faculty_by_index[f_index].id
+                entry.end_time = time(eh, em)
+                entry.room = room
 
     # --- Assignments -----------------------------------------------------
     assignments = [

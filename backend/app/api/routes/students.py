@@ -8,11 +8,12 @@ from datetime import date, timedelta
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_student_by_identifier, pagination
 from app.core.database import get_db
-from app.core.exceptions import ForbiddenError, NotFoundError
+from app.core.exceptions import ForbiddenError, NotFoundError, ValidationFailedError
 from app.core.logging import get_logger
 from app.core.security import require_admin, require_faculty_or_admin, require_student
 from app.models.assignment import Assignment, AssignmentSubmission
@@ -21,7 +22,8 @@ from app.models.exam import Exam
 from app.models.faculty import Faculty
 from app.models.notice import Notice
 from app.models.notification import Notification
-from app.models.student import Student
+from app.models.student import Student, StudentSubject
+from app.models.subject import Subject
 from app.models.study_material import StudyMaterial
 from app.models.timetable import TimetableEntry
 from app.models.user import User
@@ -62,6 +64,10 @@ def _student_out(student: Student) -> dict:
 
 
 def _timetable_entry_out(entry: TimetableEntry) -> dict:
+    s_code = entry.subject.code if entry.subject else ""
+    s_name = entry.subject.name if entry.subject else ""
+    room_lower = (entry.room or "").lower()
+    is_lab = "lab" in room_lower or "lab" in s_name.lower() or s_code.endswith("L")
     return {
         "id": entry.id,
         "subject_id": entry.subject_id,
@@ -73,9 +79,10 @@ def _timetable_entry_out(entry: TimetableEntry) -> dict:
         "start_time": entry.start_time.strftime("%H:%M"),
         "end_time": entry.end_time.strftime("%H:%M"),
         "room": entry.room,
-        "subject_code": entry.subject.code,
-        "subject_name": entry.subject.name,
+        "subject_code": s_code,
+        "subject_name": s_name,
         "faculty_name": entry.faculty.user.full_name if entry.faculty else "",
+        "class_type": "lab" if is_lab else "lecture",
     }
 
 
@@ -116,14 +123,26 @@ def _assignment_out(assignment: Assignment, status: Optional[str]) -> dict:
 
 
 def _student_exams(db: Session, student: Student) -> List[dict]:
+    from sqlalchemy import or_
+
+    enrolled_subject_ids = [ss.subject_id for ss in student.subjects]
+    filters = [
+        (Exam.department == student.department)
+        & (Exam.semester == student.semester)
+        & (
+            (Exam.section == student.section)
+            | (Exam.section == "ALL")
+            | (Exam.section == "")
+            | (Exam.section.is_(None))
+        )
+    ]
+    if enrolled_subject_ids:
+        filters.append(Exam.subject_id.in_(enrolled_subject_ids))
+
     exams = (
         db.query(Exam)
         .options(joinedload(Exam.subject))
-        .filter(
-            Exam.department == student.department,
-            Exam.semester == student.semester,
-            Exam.section == student.section,
-        )
+        .filter(or_(*filters))
         .order_by(Exam.exam_date)
         .all()
     )
@@ -170,7 +189,7 @@ def _student_timetable(db: Session, student: Student) -> List[TimetableDayOut]:
         .filter(
             TimetableEntry.department == student.department,
             TimetableEntry.semester == student.semester,
-            TimetableEntry.section == student.section,
+            (TimetableEntry.section == student.section) | (TimetableEntry.section == "ALL") | (TimetableEntry.section == ""),
         )
         .order_by(TimetableEntry.start_time)
         .all()

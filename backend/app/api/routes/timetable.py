@@ -18,6 +18,10 @@ router = APIRouter(prefix="/timetable", tags=["Timetable"])
 
 
 def _entry_out(entry: TimetableEntry) -> dict:
+    s_code = entry.subject.code if entry.subject else ""
+    s_name = entry.subject.name if entry.subject else ""
+    room_lower = (entry.room or "").lower()
+    is_lab = "lab" in room_lower or "lab" in s_name.lower() or s_code.endswith("L")
     return {
         "id": entry.id,
         "subject_id": entry.subject_id,
@@ -29,9 +33,10 @@ def _entry_out(entry: TimetableEntry) -> dict:
         "start_time": entry.start_time.strftime("%H:%M"),
         "end_time": entry.end_time.strftime("%H:%M"),
         "room": entry.room,
-        "subject_code": entry.subject.code,
-        "subject_name": entry.subject.name,
+        "subject_code": s_code,
+        "subject_name": s_name,
         "faculty_name": entry.faculty.user.full_name if entry.faculty else "",
+        "class_type": "lab" if is_lab else "lecture",
     }
 
 
@@ -72,10 +77,20 @@ def get_entry(
 @router.post("", response_model=dict, summary="Create a timetable entry (admin/faculty)")
 def create_entry(
     payload: TimetableEntryCreate,
-    _: User = Depends(require_faculty_or_admin),
+    user: User = Depends(require_faculty_or_admin),
     db: Session = Depends(get_db),
 ):
-    entry = TimetableEntry(**payload.model_dump())
+    data = payload.model_dump()
+    if data.get("faculty_id") is None:
+        if user.role == "faculty":
+            from app.api.deps import get_faculty_record
+            faculty = get_faculty_record(db, user)
+            data["faculty_id"] = faculty.id
+        else:
+            from app.models.faculty import Faculty
+            first_faculty = db.query(Faculty.id).first()
+            data["faculty_id"] = first_faculty[0] if first_faculty else 1
+    entry = TimetableEntry(**data)
     db.add(entry)
     db.commit()
     db.refresh(entry)

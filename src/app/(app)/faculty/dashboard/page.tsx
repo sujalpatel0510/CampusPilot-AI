@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDate, formatTime12, subjectColor, WEEK_DAY_NAMES } from "@/lib/utils";
 import { daysUntil } from "@/lib/utils";
+import { FEATURES } from "@/lib/feature-flags";
 
 function todayName(): string {
   const idx = (new Date().getDay() + 6) % 7;
@@ -26,7 +27,7 @@ export default function FacultyDashboardPage() {
   const timetable = useApi(() => api.getFacultyTimetable(), [], { key: "faculty-timetable" });
   const exams = useApi(() => api.getFacultyExams(), [], { key: "faculty-exams" });
   const assignments = useApi(() => api.getFacultyAssignments(), [], { key: "faculty-assignments" });
-  const notices = useApi(() => api.getFacultyNotices(), [], { key: "faculty-notices" });
+  const notices = useApi(() => (FEATURES.RESOURCES ? api.getFacultyNotices() : Promise.resolve([])), [], { key: "faculty-notices" });
 
   if (user && user.role !== "faculty") {
     return (
@@ -44,7 +45,7 @@ export default function FacultyDashboardPage() {
   }
 
   const error =
-    profile.error ?? subjects.error ?? timetable.error ?? exams.error ?? assignments.error ?? notices.error;
+    profile.error ?? subjects.error ?? timetable.error ?? exams.error ?? assignments.error ?? (FEATURES.RESOURCES ? notices.error : null);
 
   if (error) {
     return (
@@ -57,7 +58,7 @@ export default function FacultyDashboardPage() {
     );
   }
 
-  const loading = profile.loading || subjects.loading || timetable.loading || exams.loading || assignments.loading || notices.loading;
+  const loading = profile.loading || subjects.loading || timetable.loading || exams.loading || assignments.loading;
   const today = todayName();
   const todayClasses = (timetable.data ?? []).filter((e) => e.day_of_week === today);
   const upcomingExams = (exams.data ?? []).filter((e) => (e.days_left ?? 0) >= 0).slice(0, 5);
@@ -180,35 +181,37 @@ export default function FacultyDashboardPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Megaphone className="h-4 w-4 text-primary" />
-                Latest notices
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {loading ? (
-                <Skeleton className="h-32" />
-              ) : recentNotices.length === 0 ? (
-                <p className="py-4 text-center text-sm text-muted-foreground">No notices posted yet.</p>
-              ) : (
-                recentNotices.map((notice) => (
-                  <Link key={notice.id} href="/faculty/notices" className="block">
-                    <div className="rounded-md border p-2.5 transition-colors hover:bg-muted/50">
-                      <p className="truncate text-sm font-medium">{notice.title}</p>
-                      <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Badge variant="outline" className="px-1.5 py-0 text-[10px]">{notice.category}</Badge>
-                        {daysUntil(notice.created_at.slice(0, 10)) >= 0
-                          ? `${daysUntil(notice.created_at.slice(0, 10))}d ago`
-                          : formatDate(notice.created_at)}
-                      </p>
-                    </div>
-                  </Link>
-                ))
-              )}
-            </CardContent>
-          </Card>
+          {FEATURES.RESOURCES ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Megaphone className="h-4 w-4 text-primary" />
+                  Latest notices
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {loading ? (
+                  <Skeleton className="h-32" />
+                ) : recentNotices.length === 0 ? (
+                  <p className="py-4 text-center text-sm text-muted-foreground">No notices posted yet.</p>
+                ) : (
+                  recentNotices.map((notice) => (
+                    <Link key={notice.id} href="/faculty/notices" className="block">
+                      <div className="rounded-md border p-2.5 transition-colors hover:bg-muted/50">
+                        <p className="truncate text-sm font-medium">{notice.title}</p>
+                        <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Badge variant="outline" className="px-1.5 py-0 text-[10px]">{notice.category}</Badge>
+                          {daysUntil(notice.created_at.slice(0, 10)) >= 0
+                            ? `${daysUntil(notice.created_at.slice(0, 10))}d ago`
+                            : formatDate(notice.created_at)}
+                        </div>
+                      </div>
+                    </Link>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          ) : null}
         </div>
       </div>
 
@@ -224,7 +227,9 @@ export default function FacultyDashboardPage() {
             { href: "/faculty/attendance", label: "Record attendance" },
             { href: "/faculty/assignments", label: "Post an assignment" },
             { href: "/faculty/exams", label: "Schedule an exam" },
-            { href: "/faculty/materials", label: "Upload study material" },
+            ...(FEATURES.RESOURCES
+              ? [{ href: "/faculty/materials", label: "Upload study material" }]
+              : [{ href: "/faculty/timetable", label: "Manage timetable" }]),
           ].map((action) => (
             <Link
               key={action.href}

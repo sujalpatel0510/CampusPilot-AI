@@ -29,6 +29,22 @@ export function clearApiCache() {
   cache.clear();
 }
 
+/** Invalidate specific or all cached entries and notify active hooks to re-fetch */
+export function invalidateApiCache(prefix?: string) {
+  if (!prefix) {
+    cache.clear();
+  } else {
+    for (const k of Array.from(cache.keys())) {
+      if (k === prefix || k.startsWith(prefix) || k.includes(prefix)) {
+        cache.delete(k);
+      }
+    }
+  }
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("campuspilot:invalidate", { detail: prefix }));
+  }
+}
+
 export function useApi<T>(fetcher: () => Promise<T>, deps: unknown[] = [], options?: UseApiOptions): UseApiResult<T> {
   const key = options?.key;
   const ttl = options?.ttl ?? 60_000;
@@ -51,6 +67,38 @@ export function useApi<T>(fetcher: () => Promise<T>, deps: unknown[] = [], optio
   const dataRef = useRef<T | null>(data);
   const forceRef = useRef(false);
 
+  const refetch = useCallback(() => {
+    forceRef.current = true;
+    setTick((t) => t + 1);
+  }, []);
+
+  // Listen for invalidation events from other components/actions
+  useEffect(() => {
+    function onInvalidate(e: Event) {
+      const customEvent = e as CustomEvent<string | undefined>;
+      const prefix = customEvent.detail;
+      if (!prefix || !key || key === prefix || key.startsWith(prefix) || key.includes(prefix)) {
+        refetch();
+      }
+    }
+    window.addEventListener("campuspilot:invalidate", onInvalidate);
+    return () => window.removeEventListener("campuspilot:invalidate", onInvalidate);
+  }, [key, refetch]);
+
+  // Window focus auto-revalidation for fast background synchronization
+  useEffect(() => {
+    function onFocus() {
+      if (key) {
+        const hit = cache.get(key);
+        if (!hit || Date.now() - hit.at > 5000) {
+          refetch();
+        }
+      }
+    }
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [key, refetch]);
+
   useEffect(() => {
     dataRef.current = data;
   }, [data]);
@@ -60,16 +108,19 @@ export function useApi<T>(fetcher: () => Promise<T>, deps: unknown[] = [], optio
     const force = forceRef.current;
     forceRef.current = false;
 
+    // Stale-while-revalidate pattern: render cached data instantly, but background-fetch if > 4s old
     if (key && !force) {
       const hit = cache.get(key);
-      if (hit && Date.now() - hit.at < ttl) {
+      if (hit) {
         dataRef.current = hit.data as T;
         setData(hit.data as T);
         setError(null);
         setLoading(false);
-        return () => {
-          cancelled = true;
-        };
+        if (Date.now() - hit.at < 4000) {
+          return () => {
+            cancelled = true;
+          };
+        }
       }
     }
 
@@ -111,11 +162,6 @@ export function useApi<T>(fetcher: () => Promise<T>, deps: unknown[] = [], optio
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick, key, ttl, ...deps]);
-
-  const refetch = useCallback(() => {
-    forceRef.current = true;
-    setTick((t) => t + 1);
-  }, []);
 
   return { data, loading, error, refetch };
 }

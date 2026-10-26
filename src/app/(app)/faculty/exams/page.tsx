@@ -44,6 +44,7 @@ export default function FacultyExamsPage() {
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("11:00");
   const [room, setRoom] = useState("");
+  const [section, setSection] = useState("A");
   const [saving, setSaving] = useState(false);
 
   const taughtSubjectIds = new Set((subjects.data ?? []).map((s) => s.id));
@@ -57,6 +58,7 @@ export default function FacultyExamsPage() {
     setStartTime("09:00");
     setEndTime("11:00");
     setRoom("");
+    setSection("A");
     setDialogOpen(true);
   }
 
@@ -81,7 +83,7 @@ export default function FacultyExamsPage() {
         subject_id: subjectNum,
         department: selected?.department ?? "",
         semester: selected?.semester ?? 0,
-        section: "A",
+        section: section.trim() || "A",
         exam_type: examType,
         exam_date: examDate,
         start_time: startTime,
@@ -251,9 +253,15 @@ export default function FacultyExamsPage() {
                 <Input id="ex-end" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
               </div>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="ex-room">Room</Label>
-              <Input id="ex-room" value={room} onChange={(e) => setRoom(e.target.value)} placeholder="e.g. A-105" />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="ex-section">Section</Label>
+                <Input id="ex-section" value={section} onChange={(e) => setSection(e.target.value)} placeholder="e.g. A or ALL" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="ex-room">Room</Label>
+                <Input id="ex-room" value={room} onChange={(e) => setRoom(e.target.value)} placeholder="e.g. A-105" />
+              </div>
             </div>
           </div>
           <DialogFooter>

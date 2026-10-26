@@ -42,3 +42,10 @@ class AttendanceStatusOut(BaseModel):
     threshold: float
     can_miss: int
     required_to_maintain: int
+
+
+class BulkAttendanceMarkRequest(BaseModel):
+    all_present: bool = True
+    absent_student_ids: Optional[list[int]] = None
+    present_student_ids: Optional[list[int]] = None
+

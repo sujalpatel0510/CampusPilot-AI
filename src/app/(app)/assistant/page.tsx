@@ -13,8 +13,23 @@ import { ChatInput } from "@/components/assistant/chat-input";
 import { SuggestedPrompts } from "@/components/assistant/suggested-prompts";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FEATURES } from "@/lib/feature-flags";
 
 export default function AssistantPage() {
+  if (!FEATURES.AI_ASSISTANT) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center p-6 text-center">
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
+          <Bot className="h-7 w-7" />
+        </div>
+        <h2 className="text-xl font-semibold">AI Assistant is Temporarily Closed</h2>
+        <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+          This feature has been temporarily disabled. Please check back later.
+        </p>
+      </div>
+    );
+  }
+
   const { data: conversations, loading, refetch } = useApi(() => api.getConversations(), [], { key: "conversations" });
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Record<string, ChatMessage[]>>({});

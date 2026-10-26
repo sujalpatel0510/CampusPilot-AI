@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, Megaphone, PencilLine, Plus, Upload } from "lucide-react";
+import { FileText, Megaphone, PencilLine, Plus, Sparkles, Upload, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { useApi } from "@/hooks/use-api";
 import { api } from "@/lib/api";
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { FileUpload } from "@/components/ui/file-upload";
 import {
   Dialog,
   DialogContent,
@@ -56,6 +57,9 @@ export default function FacultyNoticesPage() {
   const [file, setFile] = useState<File | null>(null);
   const [uploadTitle, setUploadTitle] = useState("");
   const [saving, setSaving] = useState(false);
+  const [showAiDraft, setShowAiDraft] = useState(false);
+  const [roughNotes, setRoughNotes] = useState("");
+  const [drafting, setDrafting] = useState(false);
 
   function openDialog() {
     setMode("write");
@@ -65,7 +69,28 @@ export default function FacultyNoticesPage() {
     setImportant(false);
     setFile(null);
     setUploadTitle("");
+    setShowAiDraft(false);
+    setRoughNotes("");
     setDialogOpen(true);
+  }
+
+  async function handleAiDraftNotice() {
+    if (roughNotes.trim().length < 3) {
+      toast.error("Enter a few keywords or bullet points to draft from.");
+      return;
+    }
+    setDrafting(true);
+    try {
+      const res = await api.aiDraftNotice(roughNotes.trim(), category);
+      setTitle(res.title);
+      setContent(res.content);
+      setShowAiDraft(false);
+      toast.success("AI drafted your notice! Review and publish.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to draft notice.");
+    } finally {
+      setDrafting(false);
+    }
   }
 
   async function createNotice() {
@@ -210,6 +235,45 @@ export default function FacultyNoticesPage() {
           <div className="grid gap-4 py-2">
             {mode === "write" ? (
               <>
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      AI Smart Drafter
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-[11px] text-primary hover:bg-primary/10"
+                      onClick={() => setShowAiDraft(!showAiDraft)}
+                    >
+                      {showAiDraft ? "Hide Drafter" : "Draft with AI"}
+                    </Button>
+                  </div>
+                  {showAiDraft ? (
+                    <div className="mt-2.5 space-y-2">
+                      <Textarea
+                        value={roughNotes}
+                        onChange={(e) => setRoughNotes(e.target.value)}
+                        placeholder="Enter raw points (e.g. 'lab viva Friday 10am LH-2, topics: deadlocks & threads, bring manual')"
+                        className="text-xs bg-card"
+                        rows={2}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => void handleAiDraftNotice()}
+                        disabled={drafting || roughNotes.trim().length < 3}
+                        className="w-full text-xs gap-1.5 h-7"
+                      >
+                        <Wand2 className="h-3.5 w-3.5" />
+                        {drafting ? "Generating Draft…" : "Generate Formal Notice"}
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+
                 <div className="space-y-1.5">
                   <Label htmlFor="no-title">Title</Label>
                   <Input
@@ -233,12 +297,20 @@ export default function FacultyNoticesPage() {
             ) : (
               <>
                 <div className="space-y-1.5">
-                  <Label htmlFor="no-file">Document (PDF / image)</Label>
-                  <Input
+                  <Label htmlFor="no-file">Document / Circular (PDF or Image)</Label>
+                  <FileUpload
                     id="no-file"
-                    type="file"
+                    value={file}
+                    onChange={(newFile) => {
+                      setFile(newFile);
+                      if (newFile && !uploadTitle.trim()) {
+                        const cleanName = newFile.name.replace(/\.[^/.]+$/, "");
+                        setUploadTitle(cleanName);
+                      }
+                    }}
                     accept=".pdf,.png,.jpg,.jpeg"
-                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                    helperText="PDF or scanned notice image (OCR will extract text)"
+                    maxSizeMB={10}
                   />
                   <p className="text-[11px] text-muted-foreground">
                     Text is extracted and summarised automatically. If no file is provided, use the Write tab.

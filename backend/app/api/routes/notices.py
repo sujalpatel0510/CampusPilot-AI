@@ -4,6 +4,8 @@ Uploading a file (PDF/image) extracts text via OCR and produces an AI summary
 when the provider is available; otherwise the raw text is kept.
 """
 
+import json
+from pydantic import BaseModel
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
@@ -164,3 +166,63 @@ def delete_notice(
     db.delete(notice)
     db.commit()
     return MessageResponse(message="Notice deleted.")
+
+
+class AiDraftNoticeRequest(BaseModel):
+    rough_notes: str
+    category: str = "general"
+
+
+class AiDraftNoticeResponse(BaseModel):
+    title: str
+    content: str
+    summary: str
+    category: str
+
+
+@router.post("/ai-draft", response_model=AiDraftNoticeResponse, summary="AI Smart Announcement Drafter")
+def ai_draft_notice(
+    payload: AiDraftNoticeRequest,
+    user: User = Depends(require_faculty_or_admin),
+):
+    notes = payload.rough_notes.strip()
+    if len(notes) < 3:
+        raise ValidationFailedError("Please provide some rough notes or keywords.", code="TOO_SHORT")
+
+    from app.services.ai_service import get_ai_client
+    client = get_ai_client()
+    system_prompt = (
+        "You are an academic notice drafting assistant for a university campus. "
+        "Transform the user's rough notes into a polished, professional notice. "
+        "Return a valid JSON object with exactly three keys: 'title', 'content', and 'summary'."
+    )
+    prompt = f"Rough notes: {notes}\nCategory: {payload.category}\nFaculty Author: Prof. {user.full_name}"
+
+    try:
+        raw = client.complete(system_prompt, prompt, {})
+        if "{" in raw and "}" in raw:
+            json_str = raw[raw.find("{") : raw.rfind("}") + 1]
+            data = json.loads(json_str)
+            if "title" in data and "content" in data:
+                return AiDraftNoticeResponse(
+                    title=data["title"],
+                    content=data["content"],
+                    summary=data.get("summary", ""),
+                    category=payload.category,
+                )
+    except Exception:
+        pass
+
+    title = f"Announcement: {notes[:45].strip()}..." if len(notes) > 45 else notes
+    content = (
+        f"Dear Students,\n\n"
+        f"Regarding: {notes}\n\n"
+        f"Please review the schedule and adhere to instructions accordingly.\n\n"
+        f"Best regards,\nProf. {user.full_name}"
+    )
+    return AiDraftNoticeResponse(
+        title=title,
+        content=content,
+        summary=summarize_text(content, title),
+        category=payload.category,
+    )

@@ -1,5 +1,6 @@
 """Notification endpoints (scoped to the authenticated user)."""
 
+from typing import List
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -9,11 +10,12 @@ from app.core.security import get_current_user
 from app.models.notification import Notification
 from app.models.user import User
 from app.schemas.common import MessageResponse
+from app.schemas.notification import NotificationOut
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
 
-@router.get("", response_model=list, summary="My notifications")
+@router.get("", response_model=List[NotificationOut], summary="My notifications")
 def list_notifications(
     unread_only: bool = False,
     user: User = Depends(get_current_user),

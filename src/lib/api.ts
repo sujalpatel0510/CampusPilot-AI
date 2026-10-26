@@ -2,6 +2,7 @@ import {
   getStoredSession,
   clearSession,
 } from "@/lib/auth";
+import { invalidateApiCache } from "@/hooks/use-api";
 import type {
   AppNotification,
   Assignment,
@@ -279,16 +280,27 @@ function mapExam(json: Record<string, unknown>, subject?: Subject): Exam {
 
 function mapTimetableEntry(json: Record<string, unknown>): TimetableEntry {
   const code = String(json.subject_code ?? "");
+  const room = String(json.room ?? "");
+  const subjectName = String(json.subject_name ?? "");
+  const classType = String(json.class_type ?? "").toLowerCase();
+  const isLab =
+    classType === "lab" ||
+    code.toUpperCase().endsWith("L") ||
+    room.toLowerCase().includes("lab") ||
+    room.toLowerCase().includes("studio") ||
+    subjectName.toLowerCase().includes("lab") ||
+    subjectName.toLowerCase().includes("practical");
+
   return {
     id: String(json.id),
     subjectId: String(json.subject_id),
     day: Number(json.day_of_week ?? json.day ?? 0),
     startTime: String(json.start_time ?? "09:00").slice(0, 5),
     endTime: String(json.end_time ?? "10:00").slice(0, 5),
-    room: String(json.room ?? ""),
-    type: ((json.class_type as string) ?? "lecture") === "lab" ? "lab" : "lecture",
+    room,
+    type: isLab ? "lab" : "lecture",
     frequency: "weekly",
-    subjectName: String(json.subject_name ?? ""),
+    subjectName,
     subjectCode: code,
     facultyName: String(json.faculty_name ?? ""),
   };
@@ -526,7 +538,14 @@ export const api = {
         method: "POST",
         body: { status: "submitted" },
       });
+    } else {
+      await request("/assignments/" + id + "/submissions", {
+        method: "DELETE",
+      });
     }
+    invalidateApiCache("assignments");
+    invalidateApiCache("dashboard");
+    invalidateApiCache("faculty-assignments");
     const json = await request<Record<string, unknown>[]>("/students/me/assignments");
     const found = json.find((a) => String(a.id) === id);
     return mapAssignment(found ?? { id });
@@ -765,15 +784,76 @@ export const api = {
   },
 
   async createAttendance(input: { student_id: number; subject_id: number; total_classes: number; attended_classes: number }): Promise<AttendanceRecordRow> {
-    return request<AttendanceRecordRow>("/attendance", { method: "POST", body: input });
+    const res = await request<AttendanceRecordRow>("/attendance", { method: "POST", body: input });
+    invalidateApiCache("attendance");
+    invalidateApiCache("dashboard");
+    invalidateApiCache("faculty-students");
+    return res;
   },
 
   async updateAttendance(id: number | string, patch: { total_classes?: number; attended_classes?: number }): Promise<AttendanceRecordRow> {
-    return request<AttendanceRecordRow>(`/attendance/${id}`, { method: "PUT", body: patch });
+    const res = await request<AttendanceRecordRow>(`/attendance/${id}`, { method: "PUT", body: patch });
+    invalidateApiCache("attendance");
+    invalidateApiCache("dashboard");
+    invalidateApiCache("faculty-students");
+    return res;
   },
 
   async deleteAttendance(id: number | string): Promise<void> {
     await request(`/attendance/${id}`, { method: "DELETE" });
+    invalidateApiCache("attendance");
+    invalidateApiCache("dashboard");
+    invalidateApiCache("faculty-students");
+  },
+
+  async downloadFile(path: string, defaultFilename: string): Promise<void> {
+    const session = getStoredSession();
+    const headers: Record<string, string> = {};
+    if (session?.accessToken) {
+      headers["Authorization"] = `Bearer ${session.accessToken}`;
+    }
+    const res = await fetch(`${BASE}${path}`, { headers });
+    if (!res.ok) {
+      throw new Error(`Download failed with status ${res.status}`);
+    }
+    const blob = await res.blob();
+    const disposition = res.headers.get("Content-Disposition");
+    let filename = defaultFilename;
+    if (disposition && disposition.includes("filename=")) {
+      const match = disposition.match(/filename="?([^";]+)"?/);
+      if (match?.[1]) filename = match[1];
+    }
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
+
+  async exportSubjectAttendance(subjectId: number | string): Promise<void> {
+    return api.downloadFile(`/faculty/me/subjects/${subjectId}/attendance/export`, `attendance_${subjectId}.xlsx`);
+  },
+
+  async interveneAtRiskStudents(subjectId: number | string, studentId?: number): Promise<{ notified_count: number; message: string }> {
+    const query = studentId ? `?student_id=${studentId}` : "";
+    return request(`/faculty/me/subjects/${subjectId}/intervene${query}`, { method: "POST" });
+  },
+
+  async bulkMarkAttendance(
+    subjectId: number | string,
+    payload: { all_present?: boolean; absent_student_ids?: number[]; present_student_ids?: number[] } = { all_present: true }
+  ): Promise<{ message: string }> {
+    const res = await request<{ message: string }>(`/faculty/me/subjects/${subjectId}/attendance/bulk-mark`, {
+      method: "POST",
+      body: payload,
+    });
+    invalidateApiCache("attendance");
+    invalidateApiCache("dashboard");
+    invalidateApiCache("faculty-students");
+    return res;
   },
 
   async getFacultyAssignments(): Promise<FacultyAssignment[]> {
@@ -798,6 +878,9 @@ export const api = {
       method: "POST",
       body: input,
     });
+    invalidateApiCache("assignments");
+    invalidateApiCache("dashboard");
+    invalidateApiCache("faculty-assignments");
     return {
       id: Number(json.id),
       subject_id: Number(json.subject_id),
@@ -815,6 +898,37 @@ export const api = {
 
   async deleteAssignment(id: number | string): Promise<void> {
     await request(`/assignments/${id}`, { method: "DELETE" });
+    invalidateApiCache("assignments");
+    invalidateApiCache("dashboard");
+    invalidateApiCache("faculty-assignments");
+  },
+
+  async getAssignmentSubmissions(assignmentId: number | string): Promise<{
+    id: number;
+    student_id: number;
+    student_name: string;
+    roll_no: string;
+    file_url?: string;
+    submitted_at: string;
+    status: string;
+    grade?: number;
+    feedback?: string;
+  }[]> {
+    return request(`/assignments/${assignmentId}/submissions`);
+  },
+
+  async exportAssignmentSubmissions(assignmentId: number | string, title?: string): Promise<void> {
+    const safeTitle = (title ?? `assignment_${assignmentId}`).replace(/[^a-zA-Z0-9_-]/g, "_");
+    return api.downloadFile(`/assignments/${assignmentId}/submissions/export`, `submissions_${safeTitle}.xlsx`);
+  },
+
+  async updateSubmissionStatus(assignmentId: number | string, submissionId: number | string, status: string): Promise<void> {
+    await request(`/assignments/${assignmentId}/submissions/${submissionId}`, {
+      method: "PATCH",
+      body: { status },
+    });
+    invalidateApiCache("assignments");
+    invalidateApiCache("faculty-assignments");
   },
 
   async getFacultyTimetable(): Promise<FacultyTimetableEntry[]> {
@@ -832,14 +946,21 @@ export const api = {
     room: string;
   }): Promise<FacultyTimetableEntry> {
     const profile = await api.getFacultyProfile();
-    return request<FacultyTimetableEntry>("/timetable", {
+    const res = await request<FacultyTimetableEntry>("/timetable", {
       method: "POST",
       body: { ...input, faculty_id: profile.id },
     });
+    invalidateApiCache("timetable");
+    invalidateApiCache("dashboard");
+    invalidateApiCache("faculty-timetable");
+    return res;
   },
 
   async deleteTimetableEntry(id: number | string): Promise<void> {
     await request(`/timetable/${id}`, { method: "DELETE" });
+    invalidateApiCache("timetable");
+    invalidateApiCache("dashboard");
+    invalidateApiCache("faculty-timetable");
   },
 
   async getFacultyExams(): Promise<FacultyExam[]> {
@@ -873,11 +994,18 @@ export const api = {
     end_time: string;
     room: string;
   }): Promise<FacultyExam> {
-    return request<FacultyExam>("/exams", { method: "POST", body: input });
+    const res = await request<FacultyExam>("/exams", { method: "POST", body: input });
+    invalidateApiCache("exams");
+    invalidateApiCache("dashboard");
+    invalidateApiCache("faculty-exams");
+    return res;
   },
 
   async deleteExam(id: number | string): Promise<void> {
     await request(`/exams/${id}`, { method: "DELETE" });
+    invalidateApiCache("exams");
+    invalidateApiCache("dashboard");
+    invalidateApiCache("faculty-exams");
   },
 
   async getFacultyNotices(): Promise<FacultyNotice[]> {
@@ -914,6 +1042,18 @@ export const api = {
       is_important: Boolean(json.is_important),
       created_at: String(json.created_at ?? ""),
     };
+  },
+
+  async aiDraftNotice(roughNotes: string, category: string = "general"): Promise<{
+    title: string;
+    content: string;
+    summary: string;
+    category: string;
+  }> {
+    return request("/notices/ai-draft", {
+      method: "POST",
+      body: { rough_notes: roughNotes, category },
+    });
   },
 
   async uploadNotice(file: File, category?: string, title?: string): Promise<FacultyNotice> {

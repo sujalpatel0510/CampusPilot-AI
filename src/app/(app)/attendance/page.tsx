@@ -1,9 +1,33 @@
 "use client";
 
+import { useState } from "react";
 import dynamic from "next/dynamic";
-import { AlertTriangle, CalendarCheck, CalendarX, CheckCircle2, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  Calculator,
+  CalendarCheck,
+  CalendarX,
+  CheckCircle2,
+  Clock,
+  ShieldAlert,
+  ShieldCheck,
+  Sparkles,
+  TrendingUp,
+  Users,
+} from "lucide-react";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { CircularProgress } from "@/components/shared/circular-progress";
@@ -27,6 +51,35 @@ const AttendanceAreaChart = dynamic(
 export default function AttendancePage() {
   const { data, loading, error, refetch } = useApi(() => api.getAttendance(), [], { key: "attendance" });
 
+  // Simulator state
+  const [simSubjectId, setSimSubjectId] = useState("");
+  const [simAttend, setSimAttend] = useState("3");
+  const [simMiss, setSimMiss] = useState("0");
+
+  const effectiveSimSubj =
+    data?.subjects.find((s) => String(s.subjectId) === simSubjectId) ?? data?.subjects[0];
+
+  const currentAttended = effectiveSimSubj?.attended ?? 0;
+  const currentTotal = effectiveSimSubj?.totalClasses ?? 0;
+  const addAttend = Math.max(0, parseInt(simAttend, 10) || 0);
+  const addMiss = Math.max(0, parseInt(simMiss, 10) || 0);
+
+  const projectedTotal = currentTotal + addAttend + addMiss;
+  const projectedAttended = currentAttended + addAttend;
+  const projectedPct =
+    projectedTotal > 0 ? ((projectedAttended / projectedTotal) * 100).toFixed(1) : "0.0";
+  const projectedPctNum = parseFloat(projectedPct);
+
+  // Safe bunk calculation for effective subject
+  const safeMissable =
+    currentTotal > 0 && (currentAttended / currentTotal) >= 0.75
+      ? Math.floor((100 * currentAttended - 75 * currentTotal) / 75)
+      : 0;
+  const neededClasses =
+    currentTotal > 0 && (currentAttended / currentTotal) < 0.75
+      ? Math.ceil((75 * currentTotal - 100 * currentAttended) / 25)
+      : 0;
+
   if (error) {
     return (
       <div>
@@ -41,8 +94,8 @@ export default function AttendancePage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Attendance"
-        description="Track your presence and stay above the 75% requirement"
+        title="Attendance & Eligibility"
+        description="Track your presence, monitor cutoff thresholds, and simulate attendance goals"
       />
 
       {loading || !data ? (
@@ -187,6 +240,132 @@ export default function AttendancePage() {
                   })}
                 </TableBody>
               </Table>
+            </CardContent>
+          </Card>
+
+          {/* Interactive Attendance & Safe Bunk Simulator Card */}
+          <Card className="border-primary/20 bg-gradient-to-br from-card via-card to-primary/5 shadow-sm">
+            <CardHeader className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between pb-3">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Calculator className="h-5 w-5 text-primary" />
+                  Interactive Attendance & Safe Bunk Simulator
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Simulate your future attendance percentage before planning leaves or study sprints
+                </p>
+              </div>
+              {effectiveSimSubj ? (
+                <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                  <Label htmlFor="sim-subj-select" className="text-xs text-muted-foreground">Select Course:</Label>
+                  <Select
+                    value={String(effectiveSimSubj.subjectId)}
+                    onValueChange={(val) => setSimSubjectId(val)}
+                  >
+                    <SelectTrigger id="sim-subj-select" className="h-8 w-48 text-xs">
+                      <SelectValue placeholder="Course" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {data.subjects.map((s) => (
+                        <SelectItem key={s.subjectId} value={String(s.subjectId)}>
+                          {s.subjectName ?? s.subjectCode} ({s.percentage}%)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
+            </CardHeader>
+            <CardContent>
+              {effectiveSimSubj ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div className="rounded-lg border bg-background/60 p-3">
+                      <p className="text-xs text-muted-foreground">Current Standing</p>
+                      <p className="text-xl font-bold mt-1">
+                        {effectiveSimSubj.attended}/{effectiveSimSubj.totalClasses}{" "}
+                        <span className="text-sm font-semibold text-muted-foreground">({effectiveSimSubj.percentage}%)</span>
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        {effectiveSimSubj.percentage >= 75
+                          ? `Eligible for semester exams`
+                          : `Below threshold: Shortage of attendance`}
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg border bg-background/60 p-3">
+                      <p className="text-xs text-muted-foreground">Safe Bunk / Recovery Target</p>
+                      {effectiveSimSubj.percentage >= 75 ? (
+                        <div>
+                          <p className="text-xl font-bold mt-1 text-emerald-600 dark:text-emerald-400">
+                            {safeMissable} class{safeMissable !== 1 ? "es" : ""}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground mt-1">
+                            You can safely miss this many without dropping below 75%
+                          </p>
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="text-xl font-bold mt-1 text-amber-600 dark:text-amber-400">
+                            {neededClasses} consecutive
+                          </p>
+                          <p className="text-[11px] text-muted-foreground mt-1">
+                            Attend next {neededClasses} classes without absence to regain 75%
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="rounded-lg border bg-background/60 p-3">
+                      <p className="text-xs text-muted-foreground">Projected Attendance</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className={`text-xl font-bold ${projectedPctNum >= 75 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
+                          {projectedPct}%
+                        </p>
+                        <Badge variant={projectedPctNum >= 75 ? "success" : "destructive"} className="text-[10px]">
+                          {projectedPctNum >= 75 ? "Safe" : "Shortage"}
+                        </Badge>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        Projected: {projectedAttended}/{projectedTotal} total sessions
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border p-3.5 bg-muted/20">
+                    <p className="text-xs font-semibold mb-3 flex items-center gap-1.5">
+                      <TrendingUp className="h-4 w-4 text-primary" />
+                      What-If Calculator for {effectiveSimSubj.subjectName ?? effectiveSimSubj.subjectCode}
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="sim-attend" className="text-xs">Next upcoming classes to ATTEND:</Label>
+                        <Input
+                          id="sim-attend"
+                          type="number"
+                          min={0}
+                          max={50}
+                          value={simAttend}
+                          onChange={(e) => setSimAttend(e.target.value)}
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="sim-miss" className="text-xs">Next upcoming classes to MISS / LEAVE:</Label>
+                        <Input
+                          id="sim-miss"
+                          type="number"
+                          min={0}
+                          max={50}
+                          value={simMiss}
+                          onChange={(e) => setSimMiss(e.target.value)}
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
         </>

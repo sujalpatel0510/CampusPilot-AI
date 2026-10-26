@@ -1,10 +1,14 @@
 "use client";
 
+import Link from "next/link";
+import { CalendarClock, CalendarDays, ClipboardList, GraduationCap, Users } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useApi } from "@/hooks/use-api";
 import { api } from "@/lib/api";
 import { ErrorState } from "@/components/shared/error-state";
 import { AiWidget } from "@/components/dashboard/ai-widget";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FEATURES } from "@/lib/feature-flags";
 import {
   AttendanceCard,
   DashboardGridSkeleton,
@@ -60,7 +64,48 @@ export default function DashboardPage() {
           <div className="grid gap-6 lg:grid-cols-5">
             <div className="space-y-6 lg:col-span-2">
               <AttendanceCard data={data.attendance} />
-              <AiWidget />
+              {FEATURES.AI_ASSISTANT ? (
+                <AiWidget />
+              ) : (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                      <GraduationCap className="h-4 w-4 text-primary" />
+                      Quick Access
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-2 gap-2.5 text-xs">
+                    <Link
+                      href="/timetable"
+                      className="flex items-center gap-2 rounded-lg border p-2.5 text-muted-foreground hover:border-primary/40 hover:text-foreground hover:bg-muted/40 transition-all font-medium"
+                    >
+                      <CalendarDays className="h-4 w-4 text-primary" />
+                      Timetable
+                    </Link>
+                    <Link
+                      href="/assignments"
+                      className="flex items-center gap-2 rounded-lg border p-2.5 text-muted-foreground hover:border-primary/40 hover:text-foreground hover:bg-muted/40 transition-all font-medium"
+                    >
+                      <ClipboardList className="h-4 w-4 text-primary" />
+                      Assignments
+                    </Link>
+                    <Link
+                      href="/exams"
+                      className="flex items-center gap-2 rounded-lg border p-2.5 text-muted-foreground hover:border-primary/40 hover:text-foreground hover:bg-muted/40 transition-all font-medium"
+                    >
+                      <CalendarClock className="h-4 w-4 text-primary" />
+                      Exams
+                    </Link>
+                    <Link
+                      href="/attendance"
+                      className="flex items-center gap-2 rounded-lg border p-2.5 text-muted-foreground hover:border-primary/40 hover:text-foreground hover:bg-muted/40 transition-all font-medium"
+                    >
+                      <Users className="h-4 w-4 text-primary" />
+                      Attendance
+                    </Link>
+                  </CardContent>
+                </Card>
+              )}
             </div>
             <div className="space-y-6 lg:col-span-3">
               <UpcomingClasses data={data.todayClasses} />

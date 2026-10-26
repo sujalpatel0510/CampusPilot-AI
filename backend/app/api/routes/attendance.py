@@ -91,6 +91,7 @@ def create_attendance(
     db: Session = Depends(get_db),
 ):
     subject = ensure_subject_access(payload.subject_id, user, db)
+    validate_counts(payload.total_classes, payload.attended_classes)
     existing = (
         db.query(Attendance)
         .filter(
@@ -100,18 +101,17 @@ def create_attendance(
         .first()
     )
     if existing:
-        raise ValidationFailedError(
-            "Attendance record already exists for this student and subject.",
-            code="ATTENDANCE_EXISTS",
+        existing.total_classes = payload.total_classes
+        existing.attended_classes = payload.attended_classes
+        attendance = existing
+    else:
+        attendance = Attendance(
+            student_id=payload.student_id,
+            subject_id=payload.subject_id,
+            total_classes=payload.total_classes,
+            attended_classes=payload.attended_classes,
         )
-    validate_counts(payload.total_classes, payload.attended_classes)
-    attendance = Attendance(
-        student_id=payload.student_id,
-        subject_id=payload.subject_id,
-        total_classes=payload.total_classes,
-        attended_classes=payload.attended_classes,
-    )
-    db.add(attendance)
+        db.add(attendance)
     db.commit()
     db.refresh(attendance)
 
@@ -139,6 +139,12 @@ def update_attendance(
     attendance.attended_classes = payload.attended_classes
     db.commit()
     db.refresh(attendance)
+
+    from app.models.student import Student
+
+    student = db.get(Student, attendance.student_id)
+    if student:
+        check_student_alerts(db, student, student.user)
     return _attendance_view(attendance)
 
 

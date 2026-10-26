@@ -88,3 +88,65 @@ def test_faculty_cannot_manage_unassigned_subject(client, faculty, db):
     )
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "SUBJECT_ACCESS_DENIED"
+
+
+def test_assignment_submission_export_and_review(client, student, faculty, db):
+    from datetime import date
+    from app.models.subject import Subject
+    from app.models.assignment import Assignment, AssignmentSubmission
+    from app.models.faculty import Faculty
+    from app.models.student import Student
+
+    fac = db.query(Faculty).filter(Faculty.employee_id == "F001").first()
+    stu = db.query(Student).filter(Student.student_id == "STU001").first()
+    subject = Subject(name="Database Systems", code="DBS201", department="CSE", semester=3, credits=3)
+    db.add(subject)
+    db.flush()
+
+    assignment = Assignment(
+        subject_id=subject.id,
+        faculty_id=fac.id,
+        title="SQL Queries Lab",
+        description="Write complex queries",
+        due_date=date(2026, 11, 1),
+        priority="high",
+    )
+    db.add(assignment)
+    db.flush()
+
+    sub = AssignmentSubmission(
+        assignment_id=assignment.id,
+        student_id=stu.id,
+        status="submitted",
+        file_url="https://drive.google.com/test",
+    )
+    db.add(sub)
+    db.commit()
+
+    # 1. Export submissions to Excel (.xlsx)
+    res = client.get(
+        f"/api/v1/assignments/{assignment.id}/submissions/export",
+        headers=auth(faculty["token"]),
+    )
+    assert res.status_code == 200
+    assert "spreadsheetml.sheet" in res.headers["content-type"]
+    assert len(res.content) > 1000
+
+    # Test CSV fallback as well
+    csv_res = client.get(
+        f"/api/v1/assignments/{assignment.id}/submissions/export?format=csv",
+        headers=auth(faculty["token"]),
+    )
+    assert csv_res.status_code == 200
+    assert "text/csv" in csv_res.headers["content-type"]
+    assert "SQL Queries Lab" in csv_res.text
+
+    # 2. Faculty reviews / approves submission
+    patch_res = client.patch(
+        f"/api/v1/assignments/{assignment.id}/submissions/{sub.id}",
+        json={"status": "approved"},
+        headers=auth(faculty["token"]),
+    )
+    assert patch_res.status_code == 200
+    assert "approved" in patch_res.json()["message"]
+
